@@ -21,7 +21,6 @@ DB_CONFIG = {
 }
 
 def get_db_connection():
-    """Establish database connection"""
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         return connection
@@ -31,7 +30,6 @@ def get_db_connection():
 
 @app.route('/')
 def index():
-    """Home page with dashboard statistics"""
     conn = get_db_connection()
     if not conn:
         flash('Database connection failed!', 'error')
@@ -130,7 +128,6 @@ def products():
 
 @app.route('/products/add', methods=['GET', 'POST'])
 def add_product():
-    """Add a new product"""
     if request.method == 'POST':
         conn = get_db_connection()
         if not conn:
@@ -248,7 +245,6 @@ def update_product(product_id):
 
 @app.route('/orders')
 def orders():
-    """Display all orders"""
     conn = get_db_connection()
     if not conn:
         flash('Database connection failed!', 'error')
@@ -298,7 +294,6 @@ def order_details(order_id):
     cursor = conn.cursor(dictionary=True)
     
     try:
-        # Get order information
         cursor.execute("""
             SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
                    e.FirstName as EmpFirstName, e.LastName as EmpLastName
@@ -313,7 +308,6 @@ def order_details(order_id):
             flash('Order not found!', 'error')
             return redirect(url_for('orders'))
         
-        # Get order products
         cursor.execute("""
             SELECT op.*, p.ProductName, p.Material, p.Color
             FROM Order_Product op
@@ -322,13 +316,11 @@ def order_details(order_id):
         """, (order_id,))
         order_products = cursor.fetchall()
         
-        # Get payments
         cursor.execute("""
             SELECT * FROM Payments WHERE OrderID = %s ORDER BY PaymentDate
         """, (order_id,))
         payments = cursor.fetchall()
         
-        # Get delivery information
         cursor.execute("""
             SELECT d.*, e.FirstName, e.LastName
             FROM Delivery d
@@ -349,7 +341,6 @@ def order_details(order_id):
 
 @app.route('/orders/<int:order_id>/update_status', methods=['POST'])
 def update_order_status(order_id):
-    """Update order status"""
     conn = get_db_connection()
     if not conn:
         flash('Database connection failed!', 'error')
@@ -375,7 +366,6 @@ def update_order_status(order_id):
 
 @app.route('/inventory')
 def inventory():
-    """Display inventory status with low stock alerts"""
     conn = get_db_connection()
     if not conn:
         flash('Database connection failed!', 'error')
@@ -384,7 +374,6 @@ def inventory():
     cursor = conn.cursor(dictionary=True)
     
     try:
-        # Get all products with category and supplier info
         cursor.execute("""
             SELECT p.ProductID, p.ProductName, p.StockQuantity, p.SellingPrice,
                    c.CategoryName, s.SupplierName,
@@ -400,7 +389,6 @@ def inventory():
         """)
         products = cursor.fetchall()
         
-        # Calculate total inventory value
         cursor.execute("""
             SELECT SUM(StockQuantity * SellingPrice) as total_value
             FROM Products
@@ -419,7 +407,6 @@ def inventory():
 
 @app.route('/reports')
 def reports():
-    """Display various business reports"""
     conn = get_db_connection()
     if not conn:
         flash('Database connection failed!', 'error')
@@ -429,7 +416,6 @@ def reports():
     reports = {}
     
     try:
-        # Top selling products
         cursor.execute("""
             SELECT p.ProductName, SUM(op.Quantity) as TotalSold, SUM(op.Quantity * op.PricePerUnit) as Revenue
             FROM Order_Product op
@@ -442,7 +428,6 @@ def reports():
         """)
         reports['top_products'] = cursor.fetchall()
         
-        # Sales by category
         cursor.execute("""
             SELECT c.CategoryName, SUM(op.Quantity * op.PricePerUnit) as TotalRevenue,
                    SUM(op.Quantity) as TotalItems
@@ -456,7 +441,6 @@ def reports():
         """)
         reports['sales_by_category'] = cursor.fetchall()
         
-        # Employee performance
         cursor.execute("""
             SELECT e.FirstName, e.LastName, COUNT(o.OrderID) as OrderCount,
                    SUM(o.TotalAmount) as TotalSales
@@ -468,7 +452,6 @@ def reports():
         """)
         reports['employee_performance'] = cursor.fetchall()
         
-        # Monthly sales
         cursor.execute("""
             SELECT DATE_FORMAT(OrderDate, '%Y-%m') as Month,
                    COUNT(*) as OrderCount,
