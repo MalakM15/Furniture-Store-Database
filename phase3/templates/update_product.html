@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Update Product - AMIN Furniture Store{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Update Product</h2>
+    
+    <form method="POST" action="{{ url_for('update_product', product_id=product.ProductID) }}" style="margin-top: 2rem;">
+        <div class="form-group">
+            <label for="product_name">Product Name *</label>
+            <input type="text" id="product_name" name="product_name" value="{{ product.ProductName }}" required>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="form-group">
+                <label for="dimensions">Dimensions</label>
+                <input type="text" id="dimensions" name="dimensions" value="{{ product.Dimensions or '' }}" placeholder="e.g., 200x200 cm">
+            </div>
+            
+            <div class="form-group">
+                <label for="color">Color</label>
+                <input type="text" id="color" name="color" value="{{ product.Color or '' }}" placeholder="e.g., Brown">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="material">Material</label>
+            <input type="text" id="material" name="material" value="{{ product.Material or '' }}" placeholder="e.g., Wood, Leather, MDF">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="form-group">
+                <label for="selling_price">Selling Price (₪) *</label>
+                <input type="number" id="selling_price" name="selling_price" step="0.01" min="0" value="{{ product.SellingPrice }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="stock_quantity">Stock Quantity *</label>
+                <input type="number" id="stock_quantity" name="stock_quantity" min="0" value="{{ product.StockQuantity }}" required>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="form-group">
+                <label for="category_id">Category</label>
+                <select id="category_id" name="category_id">
+                    <option value="">Select Category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.CategoryID }}" {% if product.CategoryID == cat.CategoryID %}selected{% endif %}>
+                        {{ cat.CategoryName }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="supplier_id">Supplier</label>
+                <select id="supplier_id" name="supplier_id">
+                    <option value="">Select Supplier</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.SupplierID }}" {% if product.SupplierID == supplier.SupplierID %}selected{% endif %}>
+                        {{ supplier.SupplierName }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-success">Update Product</button>
+            <a href="{{ url_for('products') }}" class="btn" style="background: #6c757d;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

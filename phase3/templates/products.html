@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Products - AMIN Furniture Store{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2>Products Management</h2>
+        <a href="{{ url_for('add_product') }}" class="btn">+ Add New Product</a>
+    </div>
+    
+    <div class="search-bar">
+        <form method="GET" action="{{ url_for('products') }}" style="display: flex; gap: 1rem; width: 100%;">
+            <input type="text" name="search" placeholder="Search products by name or material..." value="{{ search }}">
+            <select name="category">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.CategoryID }}" {% if selected_category == cat.CategoryID|string %}selected{% endif %}>
+                    {{ cat.CategoryName }}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn">Search</button>
+            <a href="{{ url_for('products') }}" class="btn" style="background: #6c757d;">Clear</a>
+        </form>
+    </div>
+    
+    {% if products %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Color</th>
+                <th>Material</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Supplier</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.ProductID }}</td>
+                <td><strong>{{ product.ProductName }}</strong></td>
+                <td>{{ product.CategoryName or 'N/A' }}</td>
+                <td>{{ product.Color or 'N/A' }}</td>
+                <td>{{ product.Material or 'N/A' }}</td>
+                <td>{{ "%.2f"|format(product.SellingPrice) }} ₪</td>
+                <td>
+                    {% if product.StockQuantity < 10 %}
+                        <span class="badge badge-danger">{{ product.StockQuantity }}</span>
+                    {% elif product.StockQuantity < 20 %}
+                        <span class="badge badge-warning">{{ product.StockQuantity }}</span>
+                    {% else %}
+                        <span class="badge badge-success">{{ product.StockQuantity }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ product.SupplierName or 'N/A' }}</td>
+                <td>
+                    <a href="{{ url_for('update_product', product_id=product.ProductID) }}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No products found. <a href="{{ url_for('add_product') }}">Add your first product</a></p>
+    {% endif %}
+</div>
+{% endblock %}
+
