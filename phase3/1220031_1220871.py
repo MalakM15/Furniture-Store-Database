@@ -1,6 +1,7 @@
 """
-AMIN Furniture Store - Database Management System
-Student IDs: 1220031_1220871
+AMIN Furniture Store, Database Management System
+Student:Malak Milhem, ID: 1220031
+        Layal Hajji, ID: 1220871
 
 """
 
@@ -483,4 +484,5 @@ if __name__ == '__main__':
     print("\nAccess the application at: http://localhost:5000")
     print("=" * 50)
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 
