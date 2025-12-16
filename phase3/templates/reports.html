@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - AMIN Furniture Store{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Business Reports</h2>
+</div>
+
+{% if reports.top_products %}
+<div class="card">
+    <h3>Top 5 Best-Selling Products</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Total Quantity Sold</th>
+                <th>Total Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in reports.top_products %}
+            <tr>
+                <td><strong>{{ product.ProductName }}</strong></td>
+                <td>{{ product.TotalSold }}</td>
+                <td><strong>{{ "%.2f"|format(product.Revenue) }} ₪</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if reports.sales_by_category %}
+<div class="card">
+    <h3>Sales by Category</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Total Items Sold</th>
+                <th>Total Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for category in reports.sales_by_category %}
+            <tr>
+                <td><strong>{{ category.CategoryName }}</strong></td>
+                <td>{{ category.TotalItems }}</td>
+                <td><strong>{{ "%.2f"|format(category.TotalRevenue) }} ₪</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if reports.employee_performance %}
+<div class="card">
+    <h3>Employee Performance (Sales Associates)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Employee Name</th>
+                <th>Orders Processed</th>
+                <th>Total Sales</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for employee in reports.employee_performance %}
+            <tr>
+                <td><strong>{{ employee.FirstName }} {{ employee.LastName }}</strong></td>
+                <td>{{ employee.OrderCount or 0 }}</td>
+                <td><strong>{{ "%.2f"|format(employee.TotalSales or 0) }} ₪</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if reports.monthly_sales %}
+<div class="card">
+    <h3>Monthly Sales (Last 6 Months)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Number of Orders</th>
+                <th>Total Sales</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for month in reports.monthly_sales %}
+            <tr>
+                <td><strong>{{ month.Month }}</strong></td>
+                <td>{{ month.OrderCount }}</td>
+                <td><strong>{{ "%.2f"|format(month.TotalSales) }} ₪</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
+
