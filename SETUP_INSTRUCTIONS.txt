@@ -1,0 +1,60 @@
+AMIN Furniture Store - Phase 3 Prototype
+Student IDs: 1220031_1220871
+
+SETUP INSTRUCTIONS:
+
+1. DATABASE SETUP:
+   - Make sure MySQL is installed and running on your system
+   - Open MySQL command line or MySQL Workbench
+   - Create the database:
+     CREATE DATABASE amin_furniture;
+   - Import the SQL file:
+     mysql -u root -p amin_furniture < 1220031_1220871.sql
+     OR use MySQL Workbench to import the file
+
+2. CONFIGURE DATABASE CONNECTION:
+   - Open 1220031_1220871.py
+   - Update the DB_CONFIG dictionary with your MySQL credentials:
+     DB_CONFIG = {
+         'host': 'localhost',
+         'database': 'amin_furniture',
+         'user': 'root',          # Your MySQL username
+         'password': 'your_password'  # Your MySQL password
+     }
+
+3. INSTALL PYTHON DEPENDENCIES:
+   - Open terminal/command prompt in this directory
+   - Run: pip install -r requirements.txt
+   - Or install manually:
+     pip install Flask==3.0.0
+     pip install mysql-connector-python==8.2.0
+
+4. RUN THE APPLICATION:
+   - In terminal, run: python 1220031_1220871.py
+   - The application will start on http://localhost:5000
+   - Open your web browser and navigate to: http://localhost:5000
+
+5. FEATURES AVAILABLE:
+   - Dashboard: Overview statistics and recent orders
+   - Products: View, search, add, and update products
+   - Orders: View all orders, filter by status, view order details
+   - Inventory: Check stock levels and inventory value
+   - Reports: View business reports (top products, sales by category, etc.)
+
+6. FOR VIDEO DEMONSTRATION:
+   - Record a screen capture showing:
+     * Database connection and data loading
+     * Navigating through different sections
+     * Adding/updating a product
+     * Viewing order details
+     * Checking inventory
+     * Viewing reports
+
+===========================================
+IMPORTANT NOTES:
+- Make sure to update the student IDs in the filenames if needed
+- The SQL file contains both schema and dummy data
+- All 12 tables from Phase 2 are implemented
+- The Flask application provides a fully functional web interface
+===========================================
+

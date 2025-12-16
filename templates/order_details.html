@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Order Details - AMIN Furniture Store{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2>Order #{{ order.OrderID }} Details</h2>
+        <a href="{{ url_for('orders') }}" class="btn" style="background: #6c757d;">Back to Orders</a>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <div>
+            <h3>Customer Information</h3>
+            <p><strong>Name:</strong> {{ order.FirstName }} {{ order.LastName }}</p>
+            <p><strong>Email:</strong> {{ order.Email or 'N/A' }}</p>
+            <p><strong>Phone:</strong> {{ order.PhoneNumber or 'N/A' }}</p>
+            <p><strong>Address:</strong> {{ order.Address or 'N/A' }}</p>
+        </div>
+        
+        <div>
+            <h3>Order Information</h3>
+            <p><strong>Order Date:</strong> {{ order.OrderDate }}</p>
+            <p><strong>Status:</strong> 
+                {% if order.Status == 'Completed' %}
+                    <span class="badge badge-success">{{ order.Status }}</span>
+                {% elif order.Status == 'Pending' %}
+                    <span class="badge badge-warning">{{ order.Status }}</span>
+                {% else %}
+                    <span class="badge badge-info">{{ order.Status }}</span>
+                {% endif %}
+            </p>
+            <p><strong>Total Amount:</strong> <strong style="font-size: 1.2rem;">{{ "%.2f"|format(order.TotalAmount) }} ₪</strong></p>
+            <p><strong>Handled By:</strong> {{ (order.EmpFirstName or '') + ' ' + (order.EmpLastName or '') or 'N/A' }}</p>
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 2rem;">
+        <h3>Update Order Status</h3>
+        <form method="POST" action="{{ url_for('update_order_status', order_id=order.OrderID) }}" style="display: flex; gap: 1rem; align-items: center;">
+            <select name="status" style="padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                <option value="Pending" {% if order.Status == 'Pending' %}selected{% endif %}>Pending</option>
+                <option value="Processing" {% if order.Status == 'Processing' %}selected{% endif %}>Processing</option>
+                <option value="Completed" {% if order.Status == 'Completed' %}selected{% endif %}>Completed</option>
+                <option value="Cancelled" {% if order.Status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+            <button type="submit" class="btn">Update Status</button>
+        </form>
+    </div>
+    
+    <div style="margin-bottom: 2rem;">
+        <h3>Order Products</h3>
+        {% if order_products %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Material</th>
+                    <th>Color</th>
+                    <th>Quantity</th>
+                    <th>Price Per Unit</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order_products %}
+                <tr>
+                    <td>{{ item.ProductName }}</td>
+                    <td>{{ item.Material or 'N/A' }}</td>
+                    <td>{{ item.Color or 'N/A' }}</td>
+                    <td>{{ item.Quantity }}</td>
+                    <td>{{ "%.2f"|format(item.PricePerUnit) }} ₪</td>
+                    <td><strong>{{ "%.2f"|format(item.Quantity * item.PricePerUnit) }} ₪</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No products in this order.</p>
+        {% endif %}
+    </div>
+    
+    {% if payments %}
+    <div style="margin-bottom: 2rem;">
+        <h3>Payments</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Payment Date</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.PaymentDate }}</td>
+                    <td><strong>{{ "%.2f"|format(payment.AmountPaid) }} ₪</strong></td>
+                    <td>{{ payment.PaymentMethod }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p style="margin-top: 1rem;"><strong>Total Paid:</strong> {{ "%.2f"|format(payments|sum(attribute='AmountPaid')) }} ₪</p>
+    </div>
+    {% endif %}
+    
+    {% if delivery %}
+    <div>
+        <h3>Delivery Information</h3>
+        <p><strong>Status:</strong> 
+            {% if delivery.Status == 'Delivered' %}
+                <span class="badge badge-success">{{ delivery.Status }}</span>
+            {% elif delivery.Status == 'Out for Delivery' %}
+                <span class="badge badge-warning">{{ delivery.Status }}</span>
+            {% else %}
+                <span class="badge badge-info">{{ delivery.Status }}</span>
+            {% endif %}
+        </p>
+        <p><strong>Delivery Address:</strong> {{ delivery.DeliveryAddress or 'N/A' }}</p>
+        <p><strong>Scheduled Date:</strong> {{ delivery.ScheduledDate or 'N/A' }}</p>
+        <p><strong>Delivery Date:</strong> {{ delivery.DeliveryDate or 'Not yet delivered' }}</p>
+        <p><strong>Delivery Staff:</strong> {{ (delivery.FirstName or '') + ' ' + (delivery.LastName or '') or 'N/A' }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
