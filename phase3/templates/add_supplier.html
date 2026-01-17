@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Add Supplier - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('suppliers') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Suppliers
+        </a>
+        <h1>Add New Supplier</h1>
+        <p>Register a new supplier</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="truck-plus" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Supplier Information
+            </h3>
+        </div>
+        
+        <form method="POST" action="{{ url_for('add_supplier') }}">
+            <div class="form-group">
+                <label class="form-label">Supplier Name *</label>
+                <input type="text" name="supplier_name" class="form-control" placeholder="Palestine Furniture Co." required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Contact Person</label>
+                <input type="text" name="contact_person" class="form-control" placeholder="Ahmed Mansour">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="text" name="phone_number" class="form-control" placeholder="0599123456">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" placeholder="contact@supplier.com">
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="truck-plus"></i>
+                    Add Supplier
+                </button>
+                <a href="{{ url_for('suppliers') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="info" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Guidelines
+            </h3>
+        </div>
+        
+        <div class="guidelines">
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="building"></i>
+                </div>
+                <div>
+                    <strong>Supplier Name</strong>
+                    <p>Use the official company or business name.</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="user"></i>
+                </div>
+                <div>
+                    <strong>Contact Person</strong>
+                    <p>The primary contact at the supplier company.</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="phone"></i>
+                </div>
+                <div>
+                    <strong>Contact Info</strong>
+                    <p>Phone and email help with ordering and communication.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guidelines {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    
+    .guideline-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+    }
+    
+    .guideline-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(201, 169, 98, 0.1);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .guideline-icon i {
+        width: 20px;
+        height: 20px;
+        color: var(--accent-gold);
+    }
+    
+    .guideline-item strong {
+        display: block;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .guideline-item p {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

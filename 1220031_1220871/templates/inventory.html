@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - AMIN Furniture Store{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Inventory Management</h2>
+    <p style="margin-top: 0.5rem; color: #666;">Total Inventory Value: <strong>{{ "%.2f"|format(total_value) }} ₪</strong></p>
+</div>
+
+<div class="card">
+    <h3>Product Stock Levels</h3>
+    {% if products %}
+    <table>
+        <thead>
+            <tr>
+                <th>Product ID</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Stock Quantity</th>
+                <th>Status</th>
+                <th>Price</th>
+                <th>Total Value</th>
+                <th>Supplier</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.ProductID }}</td>
+                <td><strong>{{ product.ProductName }}</strong></td>
+                <td>{{ product.CategoryName or 'N/A' }}</td>
+                <td><strong>{{ product.StockQuantity }}</strong></td>
+                <td>
+                    {% if product.StockStatus == 'Low' %}
+                        <span class="badge badge-danger">Low Stock</span>
+                    {% elif product.StockStatus == 'Medium' %}
+                        <span class="badge badge-warning">Medium</span>
+                    {% else %}
+                        <span class="badge badge-success">Good</span>
+                    {% endif %}
+                </td>
+                <td>{{ "%.2f"|format(product.SellingPrice) }} ₪</td>
+                <td><strong>{{ "%.2f"|format(product.StockQuantity * product.SellingPrice) }} ₪</strong></td>
+                <td>{{ product.SupplierName or 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No products found in inventory.</p>
+    {% endif %}
+</div>
+{% endblock %}
+

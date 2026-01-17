@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Create Order - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('orders') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Orders
+        </a>
+        <h1>Create New Order</h1>
+        <p>Create a new customer order</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Order Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="shopping-cart" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Order Details
+            </h3>
+        </div>
+        
+        <form method="POST" action="{{ url_for('create_order') }}" id="orderForm">
+            <div class="form-group">
+                <label class="form-label">Customer *</label>
+                <select name="customer_id" class="form-control" required>
+                    <option value="">Select Customer</option>
+                    {% for customer in customers %}
+                        <option value="{{ customer.CustomerID }}">
+                            {{ customer.FirstName }} {{ customer.LastName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Handled By (Employee)</label>
+                <select name="employee_id" class="form-control">
+                    <option value="">Select Employee</option>
+                    {% for employee in employees %}
+                        <option value="{{ employee.EmployeeID }}">
+                            {{ employee.FirstName }} {{ employee.LastName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-top: 2rem;">
+                <div class="card-header" style="margin-bottom: 1rem; padding: 0;">
+                    <h4 style="font-size: 1.1rem; color: var(--text-primary);">Add Products</h4>
+                </div>
+                
+                <div id="productList">
+                    <!-- Product rows will be added here dynamically -->
+                </div>
+                
+                <button type="button" class="btn btn-secondary" onclick="addProductRow()" style="margin-top: 1rem; width: 100%;">
+                    <i data-lucide="plus"></i>
+                    Add Product
+                </button>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i data-lucide="check"></i>
+                    Create Order
+                </button>
+                <a href="{{ url_for('orders') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Order Summary -->
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="calculator" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Order Summary
+            </h3>
+        </div>
+        
+        <div id="orderSummary" style="min-height: 200px;">
+            <div class="empty-state" style="padding: 2rem;">
+                <i data-lucide="shopping-cart"></i>
+                <p>Add products to see order summary</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Total:</span>
+                <span id="totalAmount" style="font-size: 1.5rem; font-weight: 700; color: var(--accent-gold);">0.00 ₪</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product data for JavaScript -->
+<script>
+    const products = {{ products|tojson|safe }};
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 80px;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: 10px;
+        align-items: center;
+    }
+    
+    .product-row select,
+    .product-row input {
+        padding: 0.625rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    .product-row input[type="number"] {
+        width: 100%;
+    }
+    
+    .remove-product {
+        padding: 0.625rem;
+        background: rgba(248, 113, 113, 0.15);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        border-radius: 8px;
+        color: var(--danger);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .remove-product:hover {
+        background: rgba(248, 113, 113, 0.25);
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+    
+    .summary-item-name {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    
+    .summary-item-details {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .summary-item-price {
+        color: var(--accent-gold);
+        font-weight: 600;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    let productRowCount = 0;
+    
+    function addProductRow() {
+        productRowCount++;
+        const productList = document.getElementById('productList');
+        
+        const row = document.createElement('div');
+        row.className = 'product-row';
+        row.id = `productRow${productRowCount}`;
+        
+        // Product select
+        const productSelect = document.createElement('select');
+        productSelect.name = 'product_id[]';
+        productSelect.className = 'product-select';
+        productSelect.required = true;
+        productSelect.onchange = updateSummary;
+        
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select Product';
+        productSelect.appendChild(defaultOption);
+        
+        products.forEach(product => {
+            if (product.StockQuantity > 0) {
+                const option = document.createElement('option');
+                option.value = product.ProductID;
+                option.textContent = `${product.ProductName} (${product.StockQuantity} in stock)`;
+                option.dataset.price = product.SellingPrice;
+                option.dataset.stock = product.StockQuantity;
+                productSelect.appendChild(option);
+            }
+        });
+        
+        // Quantity input
+        const quantityInput = document.createElement('input');
+        quantityInput.type = 'number';
+        quantityInput.name = 'quantity[]';
+        quantityInput.min = '1';
+        quantityInput.value = '1';
+        quantityInput.required = true;
+        quantityInput.oninput = updateSummary;
+        
+        // Remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-product';
+        removeBtn.innerHTML = '<i data-lucide="x"></i>';
+        removeBtn.onclick = () => {
+            row.remove();
+            updateSummary();
+        };
+        
+        row.appendChild(productSelect);
+        row.appendChild(quantityInput);
+        row.appendChild(removeBtn);
+        
+        productList.appendChild(row);
+        lucide.createIcons();
+        updateSummary();
+    }
+    
+    function updateSummary() {
+        const productRows = document.querySelectorAll('.product-row');
+        const summaryDiv = document.getElementById('orderSummary');
+        const totalAmountSpan = document.getElementById('totalAmount');
+        
+        let total = 0;
+        let summaryHTML = '';
+        
+        productRows.forEach((row, index) => {
+            const select = row.querySelector('.product-select');
+            const quantityInput = row.querySelector('input[type="number"]');
+            
+            if (select.value && quantityInput.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                const productName = selectedOption.textContent.split(' (')[0];
+                const price = parseFloat(selectedOption.dataset.price);
+                const quantity = parseInt(quantityInput.value) || 0;
+                const subtotal = price * quantity;
+                total += subtotal;
+                
+                summaryHTML += `
+                    <div class="summary-item">
+                        <div>
+                            <div class="summary-item-name">${productName}</div>
+                            <div class="summary-item-details">${quantity} × ${price.toFixed(2)} ₪</div>
+                        </div>
+                        <div class="summary-item-price">${subtotal.toFixed(2)} ₪</div>
+                    </div>
+                `;
+            }
+        });
+        
+        if (summaryHTML === '') {
+            summaryHTML = `
+                <div class="empty-state" style="padding: 2rem;">
+                    <i data-lucide="shopping-cart"></i>
+                    <p>Add products to see order summary</p>
+                </div>
+            `;
+        }
+        
+        summaryDiv.innerHTML = summaryHTML;
+        totalAmountSpan.textContent = total.toFixed(2) + ' ₪';
+        lucide.createIcons();
+    }
+    
+    // Add first product row on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        addProductRow();
+    });
+</script>
+{% endblock %}
+

@@ -1,77 +1,199 @@
 {% extends "base.html" %}
 
-{% block title %}Update Product - AMIN Furniture Store{% endblock %}
+{% block title %}Update Product - AMIN Furniture{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Update Product</h2>
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('products') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Products
+        </a>
+        <h1>Update Product</h1>
+        <p>Edit product information for {{ product.ProductName }}</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Edit Product
+            </h3>
+            <span class="badge badge-info">ID: {{ product.ProductID }}</span>
+        </div>
+        
+        <form method="POST" action="{{ url_for('update_product', product_id=product.ProductID) }}">
+            <div class="form-group">
+                <label class="form-label">Product Name *</label>
+                <input type="text" name="product_name" class="form-control" value="{{ product.ProductName }}" required>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category_id" class="form-control">
+                        <option value="">Select Category</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.CategoryID }}" {% if product.CategoryID == cat.CategoryID %}selected{% endif %}>
+                                {{ cat.CategoryName }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Supplier</label>
+                    <select name="supplier_id" class="form-control">
+                        <option value="">Select Supplier</option>
+                        {% for sup in suppliers %}
+                            <option value="{{ sup.SupplierID }}" {% if product.SupplierID == sup.SupplierID %}selected{% endif %}>
+                                {{ sup.SupplierName }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Dimensions</label>
+                <input type="text" name="dimensions" class="form-control" value="{{ product.Dimensions or '' }}">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <input type="text" name="color" class="form-control" value="{{ product.Color or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Material</label>
+                    <input type="text" name="material" class="form-control" value="{{ product.Material or '' }}">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Selling Price (₪) *</label>
+                    <input type="number" name="selling_price" step="0.01" min="0" class="form-control" value="{{ product.SellingPrice }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Stock Quantity *</label>
+                    <input type="number" name="stock_quantity" min="0" class="form-control" value="{{ product.StockQuantity }}" required>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save"></i>
+                    Save Changes
+                </button>
+                <a href="{{ url_for('products') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
     
-    <form method="POST" action="{{ url_for('update_product', product_id=product.ProductID) }}" style="margin-top: 2rem;">
-        <div class="form-group">
-            <label for="product_name">Product Name *</label>
-            <input type="text" id="product_name" name="product_name" value="{{ product.ProductName }}" required>
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="info" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Current Details
+            </h3>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div class="form-group">
-                <label for="dimensions">Dimensions</label>
-                <input type="text" id="dimensions" name="dimensions" value="{{ product.Dimensions or '' }}" placeholder="e.g., 200x200 cm">
+        <div class="product-preview">
+            <div class="preview-image" style="background-image: url('https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop'); background-size: cover; background-position: center;">
             </div>
             
-            <div class="form-group">
-                <label for="color">Color</label>
-                <input type="text" id="color" name="color" value="{{ product.Color or '' }}" placeholder="e.g., Brown">
+            <div class="preview-details">
+                <div class="preview-item">
+                    <span class="preview-label">Product ID</span>
+                    <span class="preview-value">#{{ product.ProductID }}</span>
+                </div>
+                <div class="preview-item">
+                    <span class="preview-label">Date Added</span>
+                    <span class="preview-value">{{ product.DateAdded.strftime('%B %d, %Y') if product.DateAdded else 'N/A' }}</span>
+                </div>
+                <div class="preview-item">
+                    <span class="preview-label">Current Price</span>
+                    <span class="preview-value" style="color: var(--accent-gold); font-weight: 600;">{{ "%.2f"|format(product.SellingPrice) }} ₪</span>
+                </div>
+                <div class="preview-item">
+                    <span class="preview-label">Stock Status</span>
+                    <span class="preview-value">
+                        {% if product.StockQuantity >= 20 %}
+                            <span class="badge badge-success">Good ({{ product.StockQuantity }} units)</span>
+                        {% elif product.StockQuantity >= 10 %}
+                            <span class="badge badge-warning">Medium ({{ product.StockQuantity }} units)</span>
+                        {% else %}
+                            <span class="badge badge-danger">Low ({{ product.StockQuantity }} units)</span>
+                        {% endif %}
+                    </span>
+                </div>
             </div>
         </div>
-        
-        <div class="form-group">
-            <label for="material">Material</label>
-            <input type="text" id="material" name="material" value="{{ product.Material or '' }}" placeholder="e.g., Wood, Leather, MDF">
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div class="form-group">
-                <label for="selling_price">Selling Price (₪) *</label>
-                <input type="number" id="selling_price" name="selling_price" step="0.01" min="0" value="{{ product.SellingPrice }}" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="stock_quantity">Stock Quantity *</label>
-                <input type="number" id="stock_quantity" name="stock_quantity" min="0" value="{{ product.StockQuantity }}" required>
-            </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div class="form-group">
-                <label for="category_id">Category</label>
-                <select id="category_id" name="category_id">
-                    <option value="">Select Category</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.CategoryID }}" {% if product.CategoryID == cat.CategoryID %}selected{% endif %}>
-                        {{ cat.CategoryName }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="supplier_id">Supplier</label>
-                <select id="supplier_id" name="supplier_id">
-                    <option value="">Select Supplier</option>
-                    {% for supplier in suppliers %}
-                    <option value="{{ supplier.SupplierID }}" {% if product.SupplierID == supplier.SupplierID %}selected{% endif %}>
-                        {{ supplier.SupplierName }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <button type="submit" class="btn btn-success">Update Product</button>
-            <a href="{{ url_for('products') }}" class="btn" style="background: #6c757d;">Cancel</a>
-        </div>
-    </form>
+    </div>
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .product-preview {
+        text-align: center;
+    }
+    
+    .preview-image {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1.5rem;
+        background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border-color);
+    }
+    
+    .preview-image i {
+        width: 48px;
+        height: 48px;
+        color: var(--accent-gold);
+        opacity: 0.6;
+    }
+    
+    .preview-details {
+        text-align: left;
+    }
+    
+    .preview-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .preview-item:last-child {
+        border-bottom: none;
+    }
+    
+    .preview-label {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+    
+    .preview-value {
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

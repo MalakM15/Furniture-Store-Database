@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>My Profile</h1>
+        <p>View and manage your account information</p>
+    </div>
+    <a href="{{ url_for('customer_dashboard') }}" class="btn btn-secondary">
+        <i data-lucide="arrow-left"></i>
+        Back to Dashboard
+    </a>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Personal Information -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="user" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Personal Information
+            </h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Customer ID</span>
+                <span class="info-value" style="color: var(--accent-gold); font-weight: 600;">#{{ customer.CustomerID }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">First Name</span>
+                <span class="info-value">{{ customer.FirstName }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Name</span>
+                <span class="info-value">{{ customer.LastName }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ customer.Email or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Phone Number</span>
+                <span class="info-value">{{ customer.PhoneNumber or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Address</span>
+                <span class="info-value">{{ customer.Address or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Member Since</span>
+                <span class="info-value">{{ customer.RegistrationDate.strftime('%B %d, %Y') if customer.RegistrationDate else '—' }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Account Statistics -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="bar-chart-2" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Account Statistics
+            </h3>
+        </div>
+        <div class="stats-grid" style="grid-template-columns: 1fr;">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="shopping-cart"></i>
+                </div>
+                <div class="stat-value">{{ stats.total_orders or 0 }}</div>
+                <div class="stat-label">Total Orders</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <div class="stat-value">{{ stats.completed_orders or 0 }}</div>
+                <div class="stat-label">Completed Orders</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="clock"></i>
+                </div>
+                <div class="stat-value">{{ stats.pending_orders or 0 }}</div>
+                <div class="stat-label">Pending Orders</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="banknote"></i>
+                </div>
+                <div class="stat-value">{{ "%.0f"|format(stats.total_spent or 0) }}<span style="font-size: 1rem;"> ₪</span></div>
+                <div class="stat-label">Total Spent</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders -->
+{% if recent_orders %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="shopping-bag" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Recent Orders
+        </h3>
+        <a href="{{ url_for('customer_dashboard') }}" class="btn btn-secondary btn-sm">
+            View All
+            <i data-lucide="arrow-right"></i>
+        </a>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</td>
+                    <td>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else order.OrderDate }}</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                    <td>
+                        {% if order.Status == 'Completed' %}
+                            <span class="badge badge-success">{{ order.Status }}</span>
+                        {% elif order.Status == 'Pending' %}
+                            <span class="badge badge-warning">{{ order.Status }}</span>
+                        {% elif order.Status == 'Processing' %}
+                            <span class="badge badge-info">{{ order.Status }}</span>
+                        {% elif order.Status == 'Cancelled' %}
+                            <span class="badge badge-danger">{{ order.Status }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ order.Status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('customer_order_details', order_id=order.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

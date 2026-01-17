@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Customers - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Customers</h1>
+        <p>Manage customer information</p>
+    </div>
+    <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
+        <i data-lucide="user-plus"></i>
+        Add Customer
+    </a>
+</div>
+
+<!-- Search Section -->
+<div class="card fade-in" style="animation-delay: 0.1s;">
+    <form method="GET" action="{{ url_for('customers') }}">
+        <div class="search-container">
+            <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" name="search" placeholder="Search customers by name, email, or phone..." value="{{ search }}" class="form-control" style="padding-left: 3rem;">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i>
+                Search
+            </button>
+            {% if search %}
+            <a href="{{ url_for('customers') }}" class="btn btn-secondary">
+                <i data-lucide="x"></i>
+                Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if customers %}
+<!-- Customers Table -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">Customer List</h3>
+        <span style="color: var(--text-muted); font-size: 0.875rem;">
+            {{ customers|length }} customer(s) found
+        </span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ customer.CustomerID }}</td>
+                    <td style="font-weight: 500; color: var(--text-primary);">
+                        {{ customer.FirstName }} {{ customer.LastName }}
+                    </td>
+                    <td>{{ customer.Email or '—' }}</td>
+                    <td>{{ customer.PhoneNumber or '—' }}</td>
+                    <td style="color: var(--text-muted); font-size: 0.875rem;">{{ customer.Address or '—' }}</td>
+                    <td>{{ customer.RegistrationDate.strftime('%b %d, %Y') if customer.RegistrationDate else '—' }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="{{ url_for('update_customer', customer_id=customer.CustomerID) }}" class="btn btn-secondary btn-sm">
+                                <i data-lucide="edit-2"></i>
+                                Edit
+                            </a>
+                            <form method="POST" action="{{ url_for('delete_customer', customer_id=customer.CustomerID) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this customer?');">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i data-lucide="trash-2"></i>
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="empty-state">
+        <i data-lucide="users"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No customers found</h3>
+        <p>{% if search %}Try adjusting your search{% else %}Start by adding your first customer{% endif %}</p>
+        {% if not search %}
+        <a href="{{ url_for('add_customer') }}" class="btn btn-primary" style="margin-top: 1rem;">
+            <i data-lucide="user-plus"></i>
+            Add Customer
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

@@ -1,87 +1,337 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - AMIN Furniture Store{% endblock %}
+{% block title %}Dashboard - AMIN Furniture{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Dashboard Overview</h2>
-    <p style="margin-top: 0.5rem; color: #666;">Welcome to AMIN Furniture Store Management System</p>
+<!-- Hero Banner -->
+<div class="hero-banner fade-in">
+    <div class="hero-content">
+        <h1>Welcome to AMIN</h1>
+        <p>Furniture Store Management System</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+                <i data-lucide="plus"></i>
+                Add Product
+            </a>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+                <i data-lucide="bar-chart-3"></i>
+                View Reports
+            </a>
+        </div>
+    </div>
+    <div class="hero-image"></div>
 </div>
 
+<!-- Stats Cards -->
 <div class="stats-grid">
-    <div class="stat-card">
-        <h3>{{ stats.total_products or 0 }}</h3>
-        <p>Total Products</p>
+    <div class="stat-card fade-in stagger-1">
+        <div class="stat-icon">
+            <i data-lucide="package"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_products or 0 }}</div>
+        <div class="stat-label">Total Products</div>
     </div>
-    <div class="stat-card">
-        <h3>{{ stats.low_stock or 0 }}</h3>
-        <p>Low Stock Items</p>
+    
+    <div class="stat-card fade-in stagger-2">
+        <div class="stat-icon">
+            <i data-lucide="alert-triangle"></i>
+        </div>
+        <div class="stat-value">{{ stats.low_stock or 0 }}</div>
+        <div class="stat-label">Low Stock Items</div>
     </div>
-    <div class="stat-card">
-        <h3>{{ stats.total_orders or 0 }}</h3>
-        <p>Total Orders</p>
+    
+    <div class="stat-card fade-in stagger-3">
+        <div class="stat-icon">
+            <i data-lucide="shopping-cart"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_orders or 0 }}</div>
+        <div class="stat-label">Total Orders</div>
     </div>
-    <div class="stat-card">
-        <h3>{{ stats.pending_orders or 0 }}</h3>
-        <p>Pending Orders</p>
+    
+    <div class="stat-card fade-in stagger-4">
+        <div class="stat-icon">
+            <i data-lucide="clock"></i>
+        </div>
+        <div class="stat-value">{{ stats.pending_orders or 0 }}</div>
+        <div class="stat-label">Pending Orders</div>
     </div>
-    <div class="stat-card">
-        <h3>{{ "%.2f"|format(stats.total_revenue or 0) }} ₪</h3>
-        <p>Total Revenue</p>
+    
+    <div class="stat-card fade-in stagger-5">
+        <div class="stat-icon">
+            <i data-lucide="banknote"></i>
+        </div>
+        <div class="stat-value">{{ "%.0f"|format(stats.total_revenue or 0) }}<span style="font-size: 1rem; font-weight: 400;"> ₪</span></div>
+        <div class="stat-label">Total Revenue</div>
     </div>
 </div>
 
-<div class="card">
-    <h2>Recent Orders</h2>
+<!-- Charts Section -->
+<div class="grid-2 fade-in" style="animation-delay: 0.3s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Revenue Overview</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Order Status</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="ordersChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="card fade-in" style="animation-delay: 0.4s;">
+    <div class="card-header">
+        <h3 class="card-title">Recent Orders</h3>
+        <a href="{{ url_for('orders') }}" class="btn btn-secondary btn-sm">
+            View All
+            <i data-lucide="arrow-right"></i>
+        </a>
+    </div>
+    
     {% if stats.recent_orders %}
-    <table>
-        <thead>
-            <tr>
-                <th>Order ID</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in stats.recent_orders %}
-            <tr>
-                <td>#{{ order.OrderID }}</td>
-                <td>{{ order.OrderDate }}</td>
-                <td>{{ order.FirstName }} {{ order.LastName }}</td>
-                <td>{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
-                <td>
-                    {% if order.Status == 'Completed' %}
-                        <span class="badge badge-success">{{ order.Status }}</span>
-                    {% elif order.Status == 'Pending' %}
-                        <span class="badge badge-warning">{{ order.Status }}</span>
-                    {% else %}
-                        <span class="badge badge-info">{{ order.Status }}</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('order_details', order_id=order.OrderID) }}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in stats.recent_orders %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</td>
+                    <td>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else order.OrderDate }}</td>
+                    <td>{{ order.FirstName }} {{ order.LastName }}</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                    <td>
+                        {% if order.Status == 'Completed' %}
+                            <span class="badge badge-success">{{ order.Status }}</span>
+                        {% elif order.Status == 'Pending' %}
+                            <span class="badge badge-warning">{{ order.Status }}</span>
+                        {% elif order.Status == 'Cancelled' %}
+                            <span class="badge badge-danger">{{ order.Status }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ order.Status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('order_details', order_id=order.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-    <p>No recent orders found.</p>
+    <div class="empty-state">
+        <i data-lucide="inbox"></i>
+        <p>No recent orders found</p>
+    </div>
     {% endif %}
 </div>
 
-<div class="card">
-    <h2>Quick Actions</h2>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="{{ url_for('add_product') }}" class="btn">Add New Product</a>
-        <a href="{{ url_for('products') }}" class="btn">View All Products</a>
-        <a href="{{ url_for('orders') }}" class="btn">View All Orders</a>
-        <a href="{{ url_for('inventory') }}" class="btn">Check Inventory</a>
-        <a href="{{ url_for('reports') }}" class="btn">View Reports</a>
+<!-- Quick Actions -->
+<div class="card fade-in" style="animation-delay: 0.5s;">
+    <div class="card-header">
+        <h3 class="card-title">Quick Actions</h3>
+    </div>
+    <div class="quick-actions">
+        <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+            <i data-lucide="plus"></i>
+            Add New Product
+        </a>
+        <a href="{{ url_for('products') }}" class="btn btn-secondary">
+            <i data-lucide="package"></i>
+            View Products
+        </a>
+        <a href="{{ url_for('orders') }}" class="btn btn-secondary">
+            <i data-lucide="shopping-bag"></i>
+            View Orders
+        </a>
+        <a href="{{ url_for('inventory') }}" class="btn btn-secondary">
+            <i data-lucide="warehouse"></i>
+            Check Inventory
+        </a>
+        <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+            <i data-lucide="bar-chart-3"></i>
+            View Reports
+        </a>
     </div>
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .hero-banner {
+        background: linear-gradient(135deg, rgba(201, 169, 98, 0.1) 0%, rgba(26, 26, 26, 0.95) 50%), 
+                    url('https://images.unsplash.com/photo-1618220179428-22790b461013?w=1200&h=400&fit=crop');
+        background-size: cover;
+        background-position: center;
+        border-radius: 20px;
+        padding: 3rem;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 200px;
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-banner::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0.7) 50%, transparent 100%);
+    }
+    
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-content h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 3rem;
+        font-weight: 600;
+        color: var(--accent-gold);
+        margin-bottom: 0.5rem;
+    }
+    
+    .hero-content p {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+    
+    .hero-actions {
+        display: flex;
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize icons for dynamically added content
+    lucide.createIcons();
+    
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+            datasets: [{
+                label: 'Revenue (₪)',
+                data: [12000, 19000, 15000, 25000, 22000, 30000, {{ stats.total_revenue or 0 }}],
+                borderColor: '#c9a962',
+                backgroundColor: 'rgba(201, 169, 98, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#c9a962',
+                pointBorderColor: '#c9a962',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#c9a962',
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: '#666'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: '#666',
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ₪';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Orders Status Chart
+    const ordersCtx = document.getElementById('ordersChart').getContext('2d');
+    new Chart(ordersCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'Pending', 'Processing'],
+            datasets: [{
+                data: [
+                    {{ stats.total_orders - stats.pending_orders if stats.total_orders else 0 }},
+                    {{ stats.pending_orders or 0 }},
+                    0
+                ],
+                backgroundColor: [
+                    'rgba(74, 222, 128, 0.8)',
+                    'rgba(251, 191, 36, 0.8)',
+                    'rgba(96, 165, 250, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(74, 222, 128, 1)',
+                    'rgba(251, 191, 36, 1)',
+                    'rgba(96, 165, 250, 1)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#a0a0a0',
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

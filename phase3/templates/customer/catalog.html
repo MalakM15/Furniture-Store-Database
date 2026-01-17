@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Product Catalog - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Product Catalog</h1>
+        <p>Browse our furniture collection</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('customer_cart') }}" class="btn btn-primary">
+            <i data-lucide="shopping-cart"></i>
+            Cart
+            {% if session.cart %}
+            <span class="badge badge-warning" style="margin-left: 0.5rem;">{{ session.cart|length }}</span>
+            {% endif %}
+        </a>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card fade-in" style="animation-delay: 0.1s;">
+    <form method="GET" action="{{ url_for('customer_catalog') }}">
+        <div class="search-container">
+            <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" name="search" placeholder="Search products..." value="{{ search }}" class="form-control" style="padding-left: 3rem;">
+            </div>
+            <select name="category" class="form-control" style="width: auto; min-width: 200px;">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.CategoryID }}" {% if selected_category == cat.CategoryID|string %}selected{% endif %}>
+                        {{ cat.CategoryName }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i>
+                Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Products Grid -->
+{% if products %}
+<div class="products-grid fade-in" style="animation-delay: 0.2s;">
+    {% for product in products %}
+    <div class="product-card">
+        <div class="product-card-image" style="background-image: url('{{ get_product_image(product.CategoryName, product.ProductID, product.ProductName) }}'); background-size: cover; background-position: center;">
+        </div>
+        <div class="product-card-body">
+            <div class="product-card-category">{{ product.CategoryName or 'Uncategorized' }}</div>
+            <h3 class="product-card-title">{{ product.ProductName }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.5rem;">
+                {{ product.Material }} • {{ product.Color }}
+            </p>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">
+                {{ product.Dimensions }}
+            </p>
+            <div class="product-card-price">{{ "%.2f"|format(product.SellingPrice) }} <span style="font-size: 0.9rem; font-weight: 400;">₪</span></div>
+        </div>
+        <div class="product-card-footer">
+            <div class="stock-indicator">
+                {% if product.StockQuantity >= 20 %}
+                    <span class="stock-dot good"></span>
+                    <span style="color: var(--success);">In Stock</span>
+                {% elif product.StockQuantity >= 10 %}
+                    <span class="stock-dot medium"></span>
+                    <span style="color: var(--warning);">{{ product.StockQuantity }} left</span>
+                {% else %}
+                    <span class="stock-dot low"></span>
+                    <span style="color: var(--danger);">{{ product.StockQuantity }} left</span>
+                {% endif %}
+            </div>
+            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.ProductID) }}" style="display: inline;">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i data-lucide="shopping-cart"></i>
+                    Add to Cart
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="empty-state">
+        <i data-lucide="package-x"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No products found</h3>
+        <p>Try adjusting your search</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

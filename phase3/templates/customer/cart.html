@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Shopping Cart</h1>
+        <p>Review your items before checkout</p>
+    </div>
+    <a href="{{ url_for('customer_catalog') }}" class="btn btn-secondary">
+        <i data-lucide="arrow-left"></i>
+        Continue Shopping
+    </a>
+</div>
+
+{% if cart_items %}
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Cart Items -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Cart Items</h3>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Subtotal</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart_items %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ item.ProductName }}</td>
+                        <td>{{ "%.2f"|format(item.SellingPrice) }} ₪</td>
+                        <td>{{ item.quantity }}</td>
+                        <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(item.subtotal) }} ₪</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('remove_from_cart', product_id=item.ProductID) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i data-lucide="trash-2"></i>
+                                    Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Order Summary -->
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">Order Summary</h3>
+        </div>
+        
+        <div style="padding: 1rem 0;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <span style="color: var(--text-muted);">Subtotal:</span>
+                <span style="font-weight: 600;">{{ "%.2f"|format(total) }} ₪</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <span style="color: var(--text-muted);">Delivery:</span>
+                <span style="font-weight: 600;">Free</span>
+            </div>
+            <div style="border-top: 2px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 1.1rem; font-weight: 600;">Total:</span>
+                    <span style="font-size: 1.5rem; font-weight: 700; color: var(--accent-gold);">{{ "%.2f"|format(total) }} ₪</span>
+                </div>
+            </div>
+        </div>
+        
+        <a href="{{ url_for('customer_checkout') }}" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+            <i data-lucide="credit-card"></i>
+            Proceed to Checkout
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="card fade-in">
+    <div class="empty-state">
+        <i data-lucide="shopping-cart"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">Your cart is empty</h3>
+        <p>Add products to your cart to continue</p>
+        <a href="{{ url_for('customer_catalog') }}" class="btn btn-primary" style="margin-top: 1rem;">
+            <i data-lucide="shopping-bag"></i>
+            Browse Products
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

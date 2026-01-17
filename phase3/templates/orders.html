@@ -1,66 +1,192 @@
 {% extends "base.html" %}
 
-{% block title %}Orders - AMIN Furniture Store{% endblock %}
+{% block title %}Orders - AMIN Furniture{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Orders Management</h2>
-    
-    <div style="margin: 1.5rem 0;">
-        <form method="GET" action="{{ url_for('orders') }}" style="display: inline-block;">
-            <select name="status" onchange="this.form.submit()">
-                <option value="">All Orders</option>
-                <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
-                <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
-                <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
-            </select>
-        </form>
+<div class="page-header fade-in">
+    <div>
+        <h1>Orders</h1>
+        <p>Track and manage customer orders</p>
     </div>
-    
-    {% if orders %}
-    <table>
-        <thead>
-            <tr>
-                <th>Order ID</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Phone</th>
-                <th>Employee</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in orders %}
-            <tr>
-                <td>#{{ order.OrderID }}</td>
-                <td>{{ order.OrderDate }}</td>
-                <td>{{ order.FirstName }} {{ order.LastName }}</td>
-                <td>{{ order.PhoneNumber or 'N/A' }}</td>
-                <td>{{ (order.EmpFirstName or '') + ' ' + (order.EmpLastName or '') or 'N/A' }}</td>
-                <td><strong>{{ "%.2f"|format(order.TotalAmount) }} ₪</strong></td>
-                <td>
-                    {% if order.Status == 'Completed' %}
-                        <span class="badge badge-success">{{ order.Status }}</span>
-                    {% elif order.Status == 'Pending' %}
-                        <span class="badge badge-warning">{{ order.Status }}</span>
-                    {% elif order.Status == 'Cancelled' %}
-                        <span class="badge badge-danger">{{ order.Status }}</span>
-                    {% else %}
-                        <span class="badge badge-info">{{ order.Status }}</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('order_details', order_id=order.OrderID) }}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">View Details</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>No orders found.</p>
-    {% endif %}
+    <a href="{{ url_for('create_order') }}" class="btn btn-primary">
+        <i data-lucide="plus"></i>
+        Create New Order
+    </a>
 </div>
+
+<!-- Filter Section -->
+<div class="card fade-in" style="animation-delay: 0.1s;">
+    <form method="GET" action="{{ url_for('orders') }}">
+        <!-- Search Box -->
+        <div style="margin-bottom: 1rem;">
+            <div class="search-container">
+                <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" name="search" placeholder="Search by customer name, email, phone, or order ID..." value="{{ search }}" class="form-control" style="padding-left: 3rem;">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="filter"></i>
+                    Search
+                </button>
+                {% if search or status_filter %}
+                <a href="{{ url_for('orders') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Status Filter Tabs -->
+        <div>
+            <div class="filter-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('orders', search=search) if search else url_for('orders') }}" class="btn {% if not status_filter %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    All Orders
+                </a>
+                <a href="{{ url_for('orders', status='Pending', search=search) if search else url_for('orders', status='Pending') }}" class="btn {% if status_filter == 'Pending' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i data-lucide="clock"></i>
+                    Pending
+                </a>
+                <a href="{{ url_for('orders', status='Processing', search=search) if search else url_for('orders', status='Processing') }}" class="btn {% if status_filter == 'Processing' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i data-lucide="package"></i>
+                    Processing
+                </a>
+                <a href="{{ url_for('orders', status='Completed', search=search) if search else url_for('orders', status='Completed') }}" class="btn {% if status_filter == 'Completed' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i data-lucide="check-circle"></i>
+                    Completed
+                </a>
+                <a href="{{ url_for('orders', status='Cancelled', search=search) if search else url_for('orders', status='Cancelled') }}" class="btn {% if status_filter == 'Cancelled' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i data-lucide="x-circle"></i>
+                    Cancelled
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Orders Stats -->
+<div class="stats-grid fade-in" style="animation-delay: 0.15s;">
+    <div class="stat-card" style="--stat-color: var(--info);">
+        <div class="stat-icon">
+            <i data-lucide="shopping-bag"></i>
+        </div>
+        <div class="stat-value">{{ orders|length }}</div>
+        <div class="stat-label">Total Orders</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="banknote"></i>
+        </div>
+        <div class="stat-value">{{ "%.0f"|format(orders|sum(attribute='TotalAmount')) }}<span style="font-size: 1rem;"> ₪</span></div>
+        <div class="stat-label">Total Value</div>
+    </div>
+</div>
+
+{% if orders %}
+<!-- Orders Table -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">Order List</h3>
+        <span style="color: var(--text-muted); font-size: 0.875rem;">
+            {{ orders|length }} order(s) found
+        </span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Contact</th>
+                    <th>Handled By</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>
+                        <span style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</span>
+                    </td>
+                    <td>
+                        <div>
+                            <div>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else order.OrderDate }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 500; color: var(--text-primary);">
+                            {{ order.FirstName }} {{ order.LastName }}
+                        </div>
+                    </td>
+                    <td>
+                        <span style="color: var(--text-muted); font-size: 0.875rem;">{{ order.PhoneNumber }}</span>
+                    </td>
+                    <td>
+                        {% if order.EmpFirstName %}
+                            {{ order.EmpFirstName }} {{ order.EmpLastName }}
+                        {% else %}
+                            <span style="color: var(--text-muted);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="font-weight: 600; font-size: 1.1rem;">{{ "%.2f"|format(order.TotalAmount) }} ₪</span>
+                    </td>
+                    <td>
+                        {% if order.Status == 'Completed' %}
+                            <span class="badge badge-success">
+                                <i data-lucide="check" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                {{ order.Status }}
+                            </span>
+                        {% elif order.Status == 'Pending' %}
+                            <span class="badge badge-warning">
+                                <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                {{ order.Status }}
+                            </span>
+                        {% elif order.Status == 'Cancelled' %}
+                            <span class="badge badge-danger">
+                                <i data-lucide="x" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                {{ order.Status }}
+                            </span>
+                        {% else %}
+                            <span class="badge badge-info">
+                                {{ order.Status }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('order_details', order_id=order.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="empty-state">
+        <i data-lucide="shopping-bag"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No orders found</h3>
+        <p>{% if search %}No orders match your search criteria{% elif status_filter %}No {{ status_filter|lower }} orders at the moment{% else %}Orders will appear here when customers place them{% endif %}</p>
+        {% if status_filter %}
+        <a href="{{ url_for('orders') }}" class="btn btn-secondary" style="margin-top: 1rem;">
+            <i data-lucide="arrow-left"></i>
+            View All Orders
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

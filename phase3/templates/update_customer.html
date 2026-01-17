@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Update Customer - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('customers') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Customers
+        </a>
+        <h1>Update Customer</h1>
+        <p>Edit information for {{ customer.FirstName }} {{ customer.LastName }}</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Edit Customer
+            </h3>
+            <span class="badge badge-info">ID: {{ customer.CustomerID }}</span>
+        </div>
+        
+        <form method="POST" action="{{ url_for('update_customer', customer_id=customer.CustomerID) }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name *</label>
+                    <input type="text" name="first_name" class="form-control" value="{{ customer.FirstName }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name *</label>
+                    <input type="text" name="last_name" class="form-control" value="{{ customer.LastName }}" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" value="{{ customer.Email or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="text" name="phone_number" class="form-control" value="{{ customer.PhoneNumber or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <textarea name="address" class="form-control" rows="3">{{ customer.Address or '' }}</textarea>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save"></i>
+                    Save Changes
+                </button>
+                <a href="{{ url_for('customers') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="info" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Customer Details
+            </h3>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Customer ID</span>
+                <span class="info-value" style="color: var(--accent-gold); font-weight: 600;">#{{ customer.CustomerID }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Registration Date</span>
+                <span class="info-value">{{ customer.RegistrationDate.strftime('%B %d, %Y') if customer.RegistrationDate else '—' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        font-family: 'Outfit', sans-serif;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

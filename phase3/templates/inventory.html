@@ -1,55 +1,254 @@
 {% extends "base.html" %}
 
-{% block title %}Inventory - AMIN Furniture Store{% endblock %}
+{% block title %}Inventory - AMIN Furniture{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Inventory Management</h2>
-    <p style="margin-top: 0.5rem; color: #666;">Total Inventory Value: <strong>{{ "%.2f"|format(total_value) }} ₪</strong></p>
+<div class="page-header fade-in">
+    <div>
+        <h1>Inventory</h1>
+        <p>Monitor stock levels and inventory value</p>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Product Stock Levels</h3>
+<!-- Inventory Stats -->
+<div class="stats-grid fade-in" style="animation-delay: 0.1s;">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="package"></i>
+        </div>
+        <div class="stat-value">{{ products|length }}</div>
+        <div class="stat-label">Total Products</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="boxes"></i>
+        </div>
+        <div class="stat-value">{{ products|sum(attribute='StockQuantity') }}</div>
+        <div class="stat-label">Total Units</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="banknote"></i>
+        </div>
+        <div class="stat-value">{{ "%.0f"|format(total_value) }}<span style="font-size: 1rem;"> ₪</span></div>
+        <div class="stat-label">Total Inventory Value</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="alert-triangle"></i>
+        </div>
+        <div class="stat-value">{{ products|selectattr('StockStatus', 'equalto', 'Low')|list|length }}</div>
+        <div class="stat-label">Low Stock Alerts</div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="grid-2 fade-in" style="animation-delay: 0.2s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Stock Distribution</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="stockChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Inventory Value by Category</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="valueChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Stock Status Legend -->
+<div class="card fade-in" style="animation-delay: 0.25s; padding: 1rem 1.75rem;">
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="stock-dot good"></span>
+            <span style="color: var(--text-muted);">Good Stock (20+)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="stock-dot medium"></span>
+            <span style="color: var(--text-muted);">Medium Stock (10-19)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="stock-dot low"></span>
+            <span style="color: var(--text-muted);">Low Stock (&lt;10)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Inventory Table -->
+<div class="card fade-in" style="animation-delay: 0.3s;">
+    <div class="card-header">
+        <h3 class="card-title">Stock Levels</h3>
+        <span style="color: var(--text-muted); font-size: 0.875rem;">
+            Sorted by stock quantity (lowest first)
+        </span>
+    </div>
     {% if products %}
-    <table>
-        <thead>
-            <tr>
-                <th>Product ID</th>
-                <th>Product Name</th>
-                <th>Category</th>
-                <th>Stock Quantity</th>
-                <th>Status</th>
-                <th>Price</th>
-                <th>Total Value</th>
-                <th>Supplier</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in products %}
-            <tr>
-                <td>{{ product.ProductID }}</td>
-                <td><strong>{{ product.ProductName }}</strong></td>
-                <td>{{ product.CategoryName or 'N/A' }}</td>
-                <td><strong>{{ product.StockQuantity }}</strong></td>
-                <td>
-                    {% if product.StockStatus == 'Low' %}
-                        <span class="badge badge-danger">Low Stock</span>
-                    {% elif product.StockStatus == 'Medium' %}
-                        <span class="badge badge-warning">Medium</span>
-                    {% else %}
-                        <span class="badge badge-success">Good</span>
-                    {% endif %}
-                </td>
-                <td>{{ "%.2f"|format(product.SellingPrice) }} ₪</td>
-                <td><strong>{{ "%.2f"|format(product.StockQuantity * product.SellingPrice) }} ₪</strong></td>
-                <td>{{ product.SupplierName or 'N/A' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Supplier</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-primary);">{{ product.ProductName }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ product.CategoryName or 'N/A' }}</span>
+                    </td>
+                    <td style="color: var(--text-muted);">{{ product.SupplierName or 'N/A' }}</td>
+                    <td>{{ "%.2f"|format(product.SellingPrice) }} ₪</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 60px; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ [product.StockQuantity * 3, 100]|min }}%; background: {% if product.StockStatus == 'Good' %}var(--success){% elif product.StockStatus == 'Medium' %}var(--warning){% else %}var(--danger){% endif %}; border-radius: 3px;"></div>
+                            </div>
+                            <span>{{ product.StockQuantity }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if product.StockStatus == 'Good' %}
+                            <span class="badge badge-success">{{ product.StockStatus }}</span>
+                        {% elif product.StockStatus == 'Medium' %}
+                            <span class="badge badge-warning">{{ product.StockStatus }}</span>
+                        {% else %}
+                            <span class="badge badge-danger">{{ product.StockStatus }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(product.SellingPrice * product.StockQuantity) }} ₪</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-    <p>No products found in inventory.</p>
+    <div class="empty-state">
+        <i data-lucide="package-x"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No inventory data</h3>
+        <p>Add products to see inventory information</p>
+    </div>
     {% endif %}
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    // Stock Distribution Chart
+    const stockCtx = document.getElementById('stockChart').getContext('2d');
+    new Chart(stockCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Good Stock', 'Medium Stock', 'Low Stock'],
+            datasets: [{
+                data: [
+                    {{ products|selectattr('StockStatus', 'equalto', 'Good')|list|length }},
+                    {{ products|selectattr('StockStatus', 'equalto', 'Medium')|list|length }},
+                    {{ products|selectattr('StockStatus', 'equalto', 'Low')|list|length }}
+                ],
+                backgroundColor: [
+                    'rgba(74, 222, 128, 0.8)',
+                    'rgba(251, 191, 36, 0.8)',
+                    'rgba(248, 113, 113, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(74, 222, 128, 1)',
+                    'rgba(251, 191, 36, 1)',
+                    'rgba(248, 113, 113, 1)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#a0a0a0',
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Value by Category Chart
+    const categories = {};
+    {% for product in products %}
+        const cat = '{{ product.CategoryName or "Other" }}';
+        const val = {{ product.SellingPrice * product.StockQuantity }};
+        categories[cat] = (categories[cat] || 0) + val;
+    {% endfor %}
+    
+    const valueCtx = document.getElementById('valueChart').getContext('2d');
+    new Chart(valueCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(categories),
+            datasets: [{
+                label: 'Inventory Value (₪)',
+                data: Object.values(categories),
+                backgroundColor: 'rgba(201, 169, 98, 0.6)',
+                borderColor: 'rgba(201, 169, 98, 1)',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#666'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: '#666',
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ₪';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

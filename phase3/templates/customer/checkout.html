@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Checkout</h1>
+        <p>Complete your order</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Order Summary -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Order Summary</h3>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart_items %}
+                    <tr>
+                        <td>{{ item.ProductName }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ "%.2f"|format(item.SellingPrice) }} ₪</td>
+                        <td style="font-weight: 600;">{{ "%.2f"|format(item.subtotal) }} ₪</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align: right; font-weight: 600; border-top: 2px solid var(--border-color);">Total:</td>
+                        <td style="font-size: 1.25rem; font-weight: 700; color: var(--accent-gold); border-top: 2px solid var(--border-color);">{{ "%.2f"|format(total) }} ₪</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Checkout Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Place Order</h3>
+        </div>
+        
+        <form method="POST" action="{{ url_for('customer_checkout') }}" id="checkoutForm">
+            <div class="form-group">
+                <label class="form-label">Delivery Address *</label>
+                <textarea name="delivery_address" class="form-control" rows="3" placeholder="Enter delivery address" required></textarea>
+            </div>
+            
+            <!-- Payment Method Selection -->
+            <div class="form-group">
+                <label class="form-label">Payment Method *</label>
+                <select name="payment_method" id="payment_method" class="form-control" required onchange="togglePaymentFields()">
+                    <option value="">Select Payment Method</option>
+                    <option value="Card">Credit/Debit Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="E-payment">E-payment</option>
+                </select>
+            </div>
+            
+            <!-- Payment Method Fields -->
+            <div id="payment_fields" style="display: none;">
+               
+                
+                <!-- Card Payment Fields -->
+                <div id="card_fields" style="display: none;" class="payment-method-fields">
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Card Number * <span id="card_number_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                        <input type="text" name="card_number" id="card_number" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19" required>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">16 digits required</small>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Expiry Date (MM/YY) * <span id="card_expiry_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                            <input type="text" name="card_expiry" id="card_expiry" class="form-control" placeholder="MM/YY" maxlength="5" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">CVV * <span id="card_cvv_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                            <input type="text" name="card_cvv" id="card_cvv" class="form-control" placeholder="123" maxlength="3" required>
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">3 digits</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cardholder Name * <span id="card_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                        <input type="text" name="card_name" id="card_name" class="form-control" placeholder="Name on card" required>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Letters and spaces only</small>
+                    </div>
+                </div>
+                
+                <!-- Bank Transfer Fields -->
+                <div id="bank_transfer_fields" style="display: none;" class="payment-method-fields">
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Bank Name * <span id="bank_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                        <input type="text" name="bank_name" id="bank_name" class="form-control" placeholder="e.g., Bank of Palestine" required>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Must contain letters</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Account Number * <span id="account_number_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                        <input type="text" name="account_number" id="account_number" class="form-control" placeholder="Account number" required>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Numbers only</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transfer Reference</label>
+                        <input type="text" name="transfer_ref" class="form-control" placeholder="Transaction reference">
+                    </div>
+                    <div style="padding: 1rem; background: rgba(96, 165, 250, 0.1); border-radius: 8px; border: 1px solid rgba(96, 165, 250, 0.3); margin-top: 0.5rem;">
+                        <p style="color: var(--info); font-size: 0.875rem; margin: 0;">
+                            <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+                            Please transfer {{ "%.2f"|format(total) }} ₪ and provide transfer details
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- E-payment Fields -->
+                <div id="e_payment_fields" style="display: none;" class="payment-method-fields">
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">E-payment Provider</label>
+                        <select name="epayment_provider" class="form-control">
+                            <option value="">Select Provider</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="Apple Pay">Apple Pay</option>
+                            <option value="Google Pay">Google Pay</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transaction ID</label>
+                        <input type="text" name="epayment_id" class="form-control" placeholder="Transaction reference">
+                    </div>
+                    <div style="padding: 1rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.3); margin-top: 0.5rem;">
+                        <p style="color: var(--warning); font-size: 0.875rem; margin: 0;">
+                            <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+                            Complete payment of {{ "%.2f"|format(total) }} ₪ using your e-payment account
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 1rem; margin-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: var(--text-muted);">Subtotal:</span>
+                    <span>{{ "%.2f"|format(total) }} ₪</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: var(--text-muted);">Delivery:</span>
+                    <span>Free</span>
+                </div>
+                <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">Total:</span>
+                        <span style="font-size: 1.25rem; font-weight: 700; color: var(--accent-gold);">{{ "%.2f"|format(total) }} ₪</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i data-lucide="check"></i>
+                Place Order
+            </button>
+            
+            <a href="{{ url_for('customer_cart') }}" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;">
+                <i data-lucide="arrow-left"></i>
+                Back to Cart
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .payment-method-fields {
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 10px;
+        margin-top: 0.5rem;
+        border: 1px solid var(--border-color);
+    }
+    
+    .payment-method-fields .form-group {
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    function togglePaymentFields() {
+        const paymentMethod = document.getElementById('payment_method').value;
+        const paymentFields = document.getElementById('payment_fields');
+        const cardFields = document.getElementById('card_fields');
+        const bankFields = document.getElementById('bank_transfer_fields');
+        const epaymentFields = document.getElementById('e_payment_fields');
+        
+        // Clear all required attributes first
+        const cardInputs = cardFields.querySelectorAll('input[required], select[required]');
+        const bankInputs = bankFields.querySelectorAll('input[required], select[required]');
+        const epaymentInputs = epaymentFields.querySelectorAll('input[required], select[required]');
+        
+        [...cardInputs, ...bankInputs, ...epaymentInputs].forEach(input => {
+            input.removeAttribute('required');
+        });
+        
+        // Hide all payment method fields
+        cardFields.style.display = 'none';
+        bankFields.style.display = 'none';
+        epaymentFields.style.display = 'none';
+        
+        // Show payment fields container if method selected
+        if (paymentMethod) {
+            paymentFields.style.display = 'block';
+            
+            // Show relevant fields based on payment method and set required
+            if (paymentMethod === 'Card') {
+                cardFields.style.display = 'block';
+                cardFields.querySelectorAll('input[name="card_number"], input[name="card_expiry"], input[name="card_cvv"], input[name="card_name"]').forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+            } else if (paymentMethod === 'Bank Transfer') {
+                bankFields.style.display = 'block';
+                bankFields.querySelectorAll('input[name="bank_name"], input[name="account_number"]').forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+            } else if (paymentMethod === 'E-payment') {
+                epaymentFields.style.display = 'block';
+                epaymentFields.querySelector('select[name="epayment_provider"]').setAttribute('required', 'required');
+            }
+        } else {
+            paymentFields.style.display = 'none';
+        }
+        
+        lucide.createIcons();
+    }
+    
+    // Validation functions
+    function validateCardNumber(value) {
+        const digitsOnly = value.replace(/\s/g, '');
+        const errorEl = document.getElementById('card_number_error');
+        if (digitsOnly.length !== 16 || !/^\d{16}$/.test(digitsOnly)) {
+            errorEl.textContent = 'Must be exactly 16 digits';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateExpiryDate(value) {
+        const errorEl = document.getElementById('card_expiry_error');
+        if (!value || !value.includes('/')) {
+            errorEl.textContent = 'Format: MM/YY';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        const parts = value.split('/');
+        if (parts.length !== 2) {
+            errorEl.textContent = 'Format: MM/YY';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        const month = parseInt(parts[0]);
+        const year = parseInt('20' + parts[1]);
+        const today = new Date();
+        const expiryDate = new Date(year, month - 1, 1);
+        const maxDate = new Date(today.getFullYear() + 5, 11, 31);
+        
+        if (month < 1 || month > 12) {
+            errorEl.textContent = 'Month must be 01-12';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        if (expiryDate < today) {
+            errorEl.textContent = 'Cannot be in the past';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        if (expiryDate > maxDate) {
+            errorEl.textContent = 'invalid expiry date! must be within 5 years!';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateCVV(value) {
+        const errorEl = document.getElementById('card_cvv_error');
+        if (!/^\d{3}$/.test(value)) {
+            errorEl.textContent = 'Must be 3 digits';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateCardName(value) {
+        const errorEl = document.getElementById('card_name_error');
+        if (!value || !/^[a-zA-Z\s]+$/.test(value) || !value.trim()) {
+            errorEl.textContent = 'Letters and spaces only';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateBankName(value) {
+        const errorEl = document.getElementById('bank_name_error');
+        if (!value || !value.trim()) {
+            errorEl.textContent = 'Bank name is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (value.replace(/\s/g, '').match(/^\d+$/)) {
+            errorEl.textContent = 'Must contain letters, not just numbers';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateAccountNumber(value) {
+        const errorEl = document.getElementById('account_number_error');
+        if (!value || !/^\d+$/.test(value.replace(/[\s-]/g, ''))) {
+            errorEl.textContent = 'Numbers only';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    // Format card number with spaces
+    document.addEventListener('DOMContentLoaded', function() {
+        const cardNumberInput = document.getElementById('card_number');
+        if (cardNumberInput) {
+            cardNumberInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\s/g, '');
+                // Only allow digits
+                value = value.replace(/\D/g, '');
+                // Limit to 16 digits
+                value = value.substring(0, 16);
+                let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+                e.target.value = formattedValue;
+                validateCardNumber(formattedValue);
+            });
+            cardNumberInput.addEventListener('blur', function(e) {
+                validateCardNumber(e.target.value);
+            });
+        }
+        
+        // Format expiry date MM/YY
+        const expiryInput = document.getElementById('card_expiry');
+        if (expiryInput) {
+            expiryInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    value = value.substring(0, 2) + '/' + value.substring(2, 4);
+                }
+                e.target.value = value;
+                if (value.length === 5) {
+                    validateExpiryDate(value);
+                }
+            });
+            expiryInput.addEventListener('blur', function(e) {
+                validateExpiryDate(e.target.value);
+            });
+        }
+        
+        // CVV only numbers
+        const cvvInput = document.getElementById('card_cvv');
+        if (cvvInput) {
+            cvvInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/\D/g, '').substring(0, 3);
+                validateCVV(e.target.value);
+            });
+            cvvInput.addEventListener('blur', function(e) {
+                validateCVV(e.target.value);
+            });
+        }
+        
+        // Cardholder name - letters and spaces only
+        const cardNameInput = document.getElementById('card_name');
+        if (cardNameInput) {
+            cardNameInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                validateCardName(e.target.value);
+            });
+            cardNameInput.addEventListener('blur', function(e) {
+                validateCardName(e.target.value);
+            });
+        }
+        
+        // Bank name validation
+        const bankNameInput = document.getElementById('bank_name');
+        if (bankNameInput) {
+            bankNameInput.addEventListener('blur', function(e) {
+                validateBankName(e.target.value);
+            });
+        }
+        
+        // Account number - numbers only
+        const accountNumberInput = document.getElementById('account_number');
+        if (accountNumberInput) {
+            accountNumberInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/\D/g, '');
+                validateAccountNumber(e.target.value);
+            });
+            accountNumberInput.addEventListener('blur', function(e) {
+                validateAccountNumber(e.target.value);
+            });
+        }
+        
+        // Form submission validation
+        const checkoutForm = document.getElementById('checkoutForm');
+        if (checkoutForm) {
+            checkoutForm.addEventListener('submit', function(e) {
+                const paymentMethod = document.getElementById('payment_method').value;
+                let isValid = true;
+                
+                if (paymentMethod === 'Card') {
+                    isValid = validateCardNumber(document.getElementById('card_number').value) &&
+                             validateExpiryDate(document.getElementById('card_expiry').value) &&
+                             validateCVV(document.getElementById('card_cvv').value) &&
+                             validateCardName(document.getElementById('card_name').value);
+                } else if (paymentMethod === 'Bank Transfer') {
+                    isValid = validateBankName(document.getElementById('bank_name').value) &&
+                             validateAccountNumber(document.getElementById('account_number').value);
+                }
+                
+                if (!isValid) {
+                    e.preventDefault();
+                    alert('Please correct the errors in the payment information before submitting.');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+

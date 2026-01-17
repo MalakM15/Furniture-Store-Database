@@ -1,106 +1,455 @@
 {% extends "base.html" %}
 
-{% block title %}Reports - AMIN Furniture Store{% endblock %}
+{% block title %}Reports - AMIN Furniture{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Business Reports</h2>
+<div class="page-header fade-in">
+    <div>
+        <h1>Reports & Analytics</h1>
+        <p>Business insights and performance metrics</p>
+    </div>
 </div>
 
-{% if reports.top_products %}
-<div class="card">
-    <h3>Top 5 Best-Selling Products</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Product Name</th>
-                <th>Total Quantity Sold</th>
-                <th>Total Revenue</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in reports.top_products %}
-            <tr>
-                <td><strong>{{ product.ProductName }}</strong></td>
-                <td>{{ product.TotalSold }}</td>
-                <td><strong>{{ "%.2f"|format(product.Revenue) }} ₪</strong></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Top Products -->
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="trophy" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Top Selling Products
+            </h3>
+        </div>
+        {% if reports.top_products %}
+        <div class="chart-container" style="height: 250px;">
+            <canvas id="topProductsChart"></canvas>
+        </div>
+        <div class="table-container" style="margin-top: 1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Product</th>
+                        <th>Units Sold</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in reports.top_products %}
+                    <tr>
+                        <td>
+                            {% if loop.index == 1 %}
+                                <span style="color: #ffd700;">🥇</span>
+                            {% elif loop.index == 2 %}
+                                <span style="color: #c0c0c0;">🥈</span>
+                            {% elif loop.index == 3 %}
+                                <span style="color: #cd7f32;">🥉</span>
+                            {% else %}
+                                <span style="color: var(--text-muted);">#{{ loop.index }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 500;">{{ product.ProductName }}</td>
+                        <td><span class="badge badge-info">{{ product.TotalSold }} units</span></td>
+                        <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(product.Revenue) }} ₪</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="bar-chart"></i>
+            <p>No sales data available</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sales by Category -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="pie-chart" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Sales by Category
+            </h3>
+        </div>
+        {% if reports.sales_by_category %}
+        <div class="chart-container" style="height: 250px;">
+            <canvas id="categoryChart"></canvas>
+        </div>
+        <div class="table-container" style="margin-top: 1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Items Sold</th>
+                        <th>Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in reports.sales_by_category %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-info">{{ cat.CategoryName }}</span>
+                        </td>
+                        <td>{{ cat.TotalItems }} units</td>
+                        <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(cat.TotalRevenue) }} ₪</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="pie-chart"></i>
+            <p>No category data available</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
-{% endif %}
 
-{% if reports.sales_by_category %}
-<div class="card">
-    <h3>Sales by Category</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Category</th>
-                <th>Total Items Sold</th>
-                <th>Total Revenue</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for category in reports.sales_by_category %}
-            <tr>
-                <td><strong>{{ category.CategoryName }}</strong></td>
-                <td>{{ category.TotalItems }}</td>
-                <td><strong>{{ "%.2f"|format(category.TotalRevenue) }} ₪</strong></td>
-            </tr>
+<!-- Employee Performance & Monthly Sales -->
+<div class="grid-2 fade-in" style="animation-delay: 0.2s;">
+    <!-- Employee Performance -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="users" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Employee Performance
+            </h3>
+        </div>
+        {% if reports.employee_performance %}
+        <div class="employee-list">
+            {% for emp in reports.employee_performance %}
+            <div class="employee-item">
+                <div class="employee-avatar">
+                    {{ emp.FirstName[0] }}{{ emp.LastName[0] }}
+                </div>
+                <div class="employee-info">
+                    <div class="employee-name">{{ emp.FirstName }} {{ emp.LastName }}</div>
+                    <div class="employee-stats">
+                        <span><i data-lucide="shopping-bag" style="width: 14px; height: 14px;"></i> {{ emp.OrderCount or 0 }} orders</span>
+                        <span><i data-lucide="banknote" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.TotalSales or 0) }} ₪</span>
+                    </div>
+                </div>
+                <div class="employee-revenue">
+                    {{ "%.0f"|format(emp.TotalSales or 0) }} ₪
+                </div>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="users"></i>
+            <p>No employee data available</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Monthly Sales Trend -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="trending-up" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Monthly Sales Trend
+            </h3>
+        </div>
+        {% if reports.monthly_sales %}
+        <div class="chart-container">
+            <canvas id="monthlySalesChart"></canvas>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="trending-up"></i>
+            <p>No monthly data available</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
-{% endif %}
 
-{% if reports.employee_performance %}
-<div class="card">
-    <h3>Employee Performance (Sales Associates)</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Employee Name</th>
-                <th>Orders Processed</th>
-                <th>Total Sales</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for employee in reports.employee_performance %}
-            <tr>
-                <td><strong>{{ employee.FirstName }} {{ employee.LastName }}</strong></td>
-                <td>{{ employee.OrderCount or 0 }}</td>
-                <td><strong>{{ "%.2f"|format(employee.TotalSales or 0) }} ₪</strong></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Summary Stats -->
+<div class="card fade-in" style="animation-delay: 0.3s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="calculator" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Business Summary
+        </h3>
+    </div>
+    <div class="stats-grid" style="margin-top: 1rem;">
+        <div class="summary-stat">
+            <div class="summary-icon" style="background: rgba(74, 222, 128, 0.1);">
+                <i data-lucide="trending-up" style="color: var(--success);"></i>
+            </div>
+            <div>
+                <div class="summary-label">Total Revenue</div>
+                <div class="summary-value">
+                    {% set total_rev = reports.sales_by_category|sum(attribute='TotalRevenue') if reports.sales_by_category else 0 %}
+                    {{ "%.2f"|format(total_rev) }} ₪
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-stat">
+            <div class="summary-icon" style="background: rgba(96, 165, 250, 0.1);">
+                <i data-lucide="package" style="color: var(--info);"></i>
+            </div>
+            <div>
+                <div class="summary-label">Items Sold</div>
+                <div class="summary-value">
+                    {% set total_items = reports.sales_by_category|sum(attribute='TotalItems') if reports.sales_by_category else 0 %}
+                    {{ total_items }} units
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-stat">
+            <div class="summary-icon" style="background: rgba(251, 191, 36, 0.1);">
+                <i data-lucide="star" style="color: var(--warning);"></i>
+            </div>
+            <div>
+                <div class="summary-label">Top Category</div>
+                <div class="summary-value">
+                    {% if reports.sales_by_category %}
+                        {{ reports.sales_by_category[0].CategoryName }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-stat">
+            <div class="summary-icon" style="background: rgba(201, 169, 98, 0.1);">
+                <i data-lucide="award" style="color: var(--accent-gold);"></i>
+            </div>
+            <div>
+                <div class="summary-label">Top Product</div>
+                <div class="summary-value">
+                    {% if reports.top_products %}
+                        {{ reports.top_products[0].ProductName }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-{% endif %}
-
-{% if reports.monthly_sales %}
-<div class="card">
-    <h3>Monthly Sales (Last 6 Months)</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Month</th>
-                <th>Number of Orders</th>
-                <th>Total Sales</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for month in reports.monthly_sales %}
-            <tr>
-                <td><strong>{{ month.Month }}</strong></td>
-                <td>{{ month.OrderCount }}</td>
-                <td><strong>{{ "%.2f"|format(month.TotalSales) }} ₪</strong></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .employee-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .employee-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .employee-item:hover {
+        background: var(--bg-card-hover);
+    }
+    
+    .employee-avatar {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: var(--bg-primary);
+        font-size: 0.875rem;
+    }
+    
+    .employee-info {
+        flex: 1;
+    }
+    
+    .employee-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .employee-stats {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+    
+    .employee-stats span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .employee-revenue {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent-gold);
+    }
+    
+    .summary-stat {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+    }
+    
+    .summary-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .summary-icon i {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .summary-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+    
+    .summary-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    {% if reports.top_products %}
+    // Top Products Chart
+    const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+    new Chart(topProductsCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for p in reports.top_products %}'{{ p.ProductName[:15] }}...'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Units Sold',
+                data: [{% for p in reports.top_products %}{{ p.TotalSold }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: 'rgba(201, 169, 98, 0.6)',
+                borderColor: 'rgba(201, 169, 98, 1)',
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#666' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#a0a0a0' }
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    {% if reports.sales_by_category %}
+    // Category Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for c in reports.sales_by_category %}'{{ c.CategoryName }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for c in reports.sales_by_category %}{{ c.TotalRevenue }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgba(201, 169, 98, 0.8)',
+                    'rgba(74, 222, 128, 0.8)',
+                    'rgba(96, 165, 250, 0.8)',
+                    'rgba(251, 191, 36, 0.8)',
+                    'rgba(248, 113, 113, 0.8)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '55%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#a0a0a0', padding: 15, usePointStyle: true }
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    {% if reports.monthly_sales %}
+    // Monthly Sales Chart
+    const monthlyCtx = document.getElementById('monthlySalesChart').getContext('2d');
+    new Chart(monthlyCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for m in reports.monthly_sales|reverse %}'{{ m.Month }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Sales (₪)',
+                data: [{% for m in reports.monthly_sales|reverse %}{{ m.TotalSales }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                borderColor: '#c9a962',
+                backgroundColor: 'rgba(201, 169, 98, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#c9a962',
+                pointRadius: 5,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#666' }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: {
+                        color: '#666',
+                        callback: function(value) { return value.toLocaleString() + ' ₪'; }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

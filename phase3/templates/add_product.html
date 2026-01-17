@@ -1,73 +1,202 @@
 {% extends "base.html" %}
 
-{% block title %}Add Product - AMIN Furniture Store{% endblock %}
+{% block title %}Add Product - AMIN Furniture{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Add New Product</h2>
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('products') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Products
+        </a>
+        <h1>Add New Product</h1>
+        <p>Add a new furniture item to your inventory</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="package-plus" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Product Information
+            </h3>
+        </div>
+        
+        <form method="POST" action="{{ url_for('add_product') }}">
+            <div class="form-group">
+                <label class="form-label">Product Name *</label>
+                <input type="text" name="product_name" class="form-control" placeholder="e.g., Modern Leather Sofa" required>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category_id" class="form-control">
+                        <option value="">Select Category</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.CategoryID }}">{{ cat.CategoryName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Supplier</label>
+                    <select name="supplier_id" class="form-control">
+                        <option value="">Select Supplier</option>
+                        {% for sup in suppliers %}
+                            <option value="{{ sup.SupplierID }}">{{ sup.SupplierName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Dimensions</label>
+                <input type="text" name="dimensions" class="form-control" placeholder="e.g., 200x90 cm">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <input type="text" name="color" class="form-control" placeholder="e.g., Brown">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Material</label>
+                    <input type="text" name="material" class="form-control" placeholder="e.g., Leather, Wood">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Selling Price (₪) *</label>
+                    <input type="number" name="selling_price" step="0.01" min="0" class="form-control" placeholder="0.00" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Stock Quantity *</label>
+                    <input type="number" name="stock_quantity" min="0" class="form-control" placeholder="0" required>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="plus"></i>
+                    Add Product
+                </button>
+                <a href="{{ url_for('products') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
     
-    <form method="POST" action="{{ url_for('add_product') }}" style="margin-top: 2rem;">
-        <div class="form-group">
-            <label for="product_name">Product Name *</label>
-            <input type="text" id="product_name" name="product_name" required>
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="info" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Guidelines
+            </h3>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div class="form-group">
-                <label for="dimensions">Dimensions</label>
-                <input type="text" id="dimensions" name="dimensions" placeholder="e.g., 200x200 cm">
+        <div class="guidelines">
+            <div class="product-preview-image" style="margin-bottom: 1.5rem; border-radius: 12px; overflow: hidden; height: 150px; background: url('https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=200&fit=crop') center/cover;"></div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <div>
+                    <strong>Product Name</strong>
+                    <p>Use clear, descriptive names that customers can easily understand.</p>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="color">Color</label>
-                <input type="text" id="color" name="color" placeholder="e.g., Brown">
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label for="material">Material</label>
-            <input type="text" id="material" name="material" placeholder="e.g., Wood, Leather, MDF">
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div class="form-group">
-                <label for="selling_price">Selling Price (₪) *</label>
-                <input type="number" id="selling_price" name="selling_price" step="0.01" min="0" required>
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="ruler"></i>
+                </div>
+                <div>
+                    <strong>Dimensions</strong>
+                    <p>Use format: Width x Height x Depth (e.g., 200x90x85 cm)</p>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="stock_quantity">Stock Quantity *</label>
-                <input type="number" id="stock_quantity" name="stock_quantity" min="0" required>
-            </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div class="form-group">
-                <label for="category_id">Category</label>
-                <select id="category_id" name="category_id">
-                    <option value="">Select Category</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.CategoryID }}">{{ cat.CategoryName }}</option>
-                    {% endfor %}
-                </select>
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="tag"></i>
+                </div>
+                <div>
+                    <strong>Pricing</strong>
+                    <p>Enter the selling price in Shekels (₪)</p>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="supplier_id">Supplier</label>
-                <select id="supplier_id" name="supplier_id">
-                    <option value="">Select Supplier</option>
-                    {% for supplier in suppliers %}
-                    <option value="{{ supplier.SupplierID }}">{{ supplier.SupplierName }}</option>
-                    {% endfor %}
-                </select>
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="package"></i>
+                </div>
+                <div>
+                    <strong>Stock</strong>
+                    <p>Low stock warning appears when quantity is below 10 units.</p>
+                </div>
             </div>
         </div>
-        
-        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <button type="submit" class="btn btn-success">Add Product</button>
-            <a href="{{ url_for('products') }}" class="btn" style="background: #6c757d;">Cancel</a>
-        </div>
-    </form>
+    </div>
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .guidelines {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    
+    .guideline-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+    }
+    
+    .guideline-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(201, 169, 98, 0.1);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .guideline-icon i {
+        width: 20px;
+        height: 20px;
+        color: var(--accent-gold);
+    }
+    
+    .guideline-item strong {
+        display: block;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .guideline-item p {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Dashboard - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Employee Dashboard</h1>
+        <p>Welcome, {{ session.user_name }}{% if is_manager %} (Manager){% endif %}</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid fade-in" style="animation-delay: 0.1s;">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="package"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_products or 0 }}</div>
+        <div class="stat-label">Total Products</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="alert-triangle"></i>
+        </div>
+        <div class="stat-value">{{ stats.low_stock or 0 }}</div>
+        <div class="stat-label">Low Stock Items</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="clock"></i>
+        </div>
+        <div class="stat-value">{{ stats.pending_orders or 0 }}</div>
+        <div class="stat-label">Pending Orders</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="shopping-cart"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_orders or 0 }}</div>
+        <div class="stat-label">Total Orders</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">Quick Actions</h3>
+    </div>
+    <div class="quick-actions">
+        <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+            <i data-lucide="plus"></i>
+            Add Product
+        </a>
+        <a href="{{ url_for('products') }}" class="btn btn-secondary">
+            <i data-lucide="package"></i>
+            Manage Products
+        </a>
+        <a href="{{ url_for('orders') }}" class="btn btn-secondary">
+            <i data-lucide="shopping-bag"></i>
+            View Orders
+        </a>
+        <a href="{{ url_for('customers') }}" class="btn btn-secondary">
+            <i data-lucide="users"></i>
+            Customers
+        </a>
+        {% if is_manager %}
+        <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+            <i data-lucide="bar-chart-3"></i>
+            Reports
+        </a>
+        <a href="{{ url_for('inventory') }}" class="btn btn-secondary">
+            <i data-lucide="warehouse"></i>
+            Inventory
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="card fade-in" style="animation-delay: 0.3s;">
+    <div class="card-header">
+        <h3 class="card-title">Recent Orders</h3>
+        <a href="{{ url_for('orders') }}" class="btn btn-secondary btn-sm">
+            View All
+            <i data-lucide="arrow-right"></i>
+        </a>
+    </div>
+    
+    {% if stats.recent_orders %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in stats.recent_orders %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</td>
+                    <td>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else order.OrderDate }}</td>
+                    <td>{{ order.FirstName }} {{ order.LastName }}</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                    <td>
+                        {% if order.Status == 'Completed' %}
+                            <span class="badge badge-success">{{ order.Status }}</span>
+                        {% elif order.Status == 'Pending' %}
+                            <span class="badge badge-warning">{{ order.Status }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ order.Status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('order_details', order_id=order.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="inbox"></i>
+        <p>No recent orders</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

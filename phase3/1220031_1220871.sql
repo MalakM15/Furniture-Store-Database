@@ -185,16 +185,16 @@ INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, Registr
 
 
 INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, TotalAmount, Status) VALUES
-(1, 2, '2023-06-10', 1500.00, 'Completed'),
-(2, 2, '2023-06-15', 3500.00, 'Completed'),
-(3, 3, '2023-06-20', 5000.00, 'Completed'),
-(4, 2, '2023-07-01', 2500.00, 'Completed'),
-(5, 3, '2023-07-05', 1200.00, 'Completed'),
-(6, 2, '2023-07-10', 8000.00, 'Completed'),
-(7, 3, '2023-07-15', 1500.00, 'Completed'),
-(8, 2, '2023-07-20', 3000.00, 'Pending'),
-(1, 3, '2023-07-25', 1200.00, 'Pending'),
-(2, 2, '2023-08-01', 1800.00, 'Pending');
+(1, 2, '2025-06-10', 1500.00, 'Completed'),
+(2, 2, '2025-06-15', 3500.00, 'Completed'),
+(3, 3, '2025-06-20', 5000.00, 'Completed'),
+(4, 2, '2025-07-01', 2500.00, 'Completed'),
+(5, 3, '2025-07-05', 1200.00, 'Completed'),
+(6, 2, '2025-07-10', 8000.00, 'Completed'),
+(7, 3, '2025-07-15', 1500.00, 'Completed'),
+(8, 2, '2025-11-20', 3000.00, 'Pending'),
+(1, 3, '2025-11-25', 1200.00, 'Pending'),
+(2, 2, '2025-11-01', 1800.00, 'Pending');
 
 
 INSERT INTO Order_Product (OrderID, ProductID, Quantity, PricePerUnit) VALUES

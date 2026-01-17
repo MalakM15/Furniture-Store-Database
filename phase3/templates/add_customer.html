@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Add Customer - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('customers') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Customers
+        </a>
+        <h1>Add New Customer</h1>
+        <p>Register a new customer</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="user-plus" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Customer Information
+            </h3>
+        </div>
+        
+        <form method="POST" action="{{ url_for('add_customer') }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name * <span id="first_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="first_name" id="first_name" class="form-control" placeholder="John" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name * <span id="last_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="last_name" id="last_name" class="form-control" placeholder="Doe" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" placeholder="john.doe@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Phone Number <span id="phone_number_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="text" name="phone_number" id="phone_number" class="form-control" placeholder="0599123456">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Numbers only</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <textarea name="address" class="form-control" rows="3" placeholder="Ramallah, Al-Bireh Street"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="user-plus"></i>
+                    Add Customer
+                </button>
+                <a href="{{ url_for('customers') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="card" style="height: fit-content;">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="info" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Guidelines
+            </h3>
+        </div>
+        
+        <div class="guidelines">
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="user"></i>
+                </div>
+                <div>
+                    <strong>Name</strong>
+                    <p>Use the customer's full legal name for accurate records.</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="mail"></i>
+                </div>
+                <div>
+                    <strong>Email</strong>
+                    <p>Email address is optional but helps with communication and order updates.</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="phone"></i>
+                </div>
+                <div>
+                    <strong>Phone</strong>
+                    <p>Use Palestine phone format: 0599123456</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="map-pin"></i>
+                </div>
+                <div>
+                    <strong>Address</strong>
+                    <p>Full address helps with delivery arrangements.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guidelines {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    
+    .guideline-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+    }
+    
+    .guideline-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(201, 169, 98, 0.1);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .guideline-icon i {
+        width: 20px;
+        height: 20px;
+        color: var(--accent-gold);
+    }
+    
+    .guideline-item strong {
+        display: block;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .guideline-item p {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        font-family: 'Outfit', sans-serif;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    // Validation functions
+    function validateName(name, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!name || !name.trim()) {
+            errorEl.textContent = 'This field is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+            errorEl.textContent = 'Must contain only letters and spaces';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validatePhone(phone, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!phone || !phone.trim()) {
+            errorEl.style.display = 'none';
+            return true; // Phone is optional
+        }
+        if (!/^\d+$/.test(phone.trim())) {
+            errorEl.textContent = 'Must contain only numbers';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    // First name validation
+    const firstNameInput = document.getElementById('first_name');
+    if (firstNameInput) {
+        firstNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'first_name');
+        });
+        firstNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'first_name');
+        });
+    }
+    
+    // Last name validation
+    const lastNameInput = document.getElementById('last_name');
+    if (lastNameInput) {
+        lastNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'last_name');
+        });
+        lastNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'last_name');
+        });
+    }
+    
+    // Phone number validation
+    const phoneInput = document.getElementById('phone_number');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            validatePhone(e.target.value, 'phone_number');
+        });
+        phoneInput.addEventListener('blur', function(e) {
+            validatePhone(e.target.value, 'phone_number');
+        });
+    }
+    
+    // Form submission validation
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const firstName = document.getElementById('first_name').value;
+            const lastName = document.getElementById('last_name').value;
+            const phone = document.getElementById('phone_number').value;
+            
+            let isValid = validateName(firstName, 'first_name') &&
+                         validateName(lastName, 'last_name') &&
+                         validatePhone(phone, 'phone_number');
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please correct the errors in the form before submitting.');
+            }
+        });
+    }
+</script>
+{% endblock %}
+

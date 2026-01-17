@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}My Dashboard - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Welcome, {{ session.user_name }}!</h1>
+        <p>Your order history and account overview</p>
+    </div>
+    <a href="{{ url_for('customer_catalog') }}" class="btn btn-primary">
+        <i data-lucide="shopping-bag"></i>
+        Shop Now
+    </a>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid fade-in" style="animation-delay: 0.1s;">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="shopping-cart"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_orders or 0 }}</div>
+        <div class="stat-label">Total Orders</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="banknote"></i>
+        </div>
+        <div class="stat-value">{{ "%.0f"|format(stats.total_spent or 0) }}<span style="font-size: 1rem;"> ₪</span></div>
+        <div class="stat-label">Total Spent</div>
+    </div>
+</div>
+
+<!-- Orders -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">My Orders</h3>
+        <a href="{{ url_for('customer_catalog') }}" class="btn btn-secondary btn-sm">
+            <i data-lucide="plus"></i>
+            New Order
+        </a>
+    </div>
+    
+    {% if orders %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</td>
+                    <td>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else order.OrderDate }}</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                    <td>
+                        {% if order.Status == 'Completed' %}
+                            <span class="badge badge-success">{{ order.Status }}</span>
+                        {% elif order.Status == 'Pending' %}
+                            <span class="badge badge-warning">{{ order.Status }}</span>
+                        {% elif order.Status == 'Processing' %}
+                            <span class="badge badge-info">{{ order.Status }}</span>
+                        {% elif order.Status == 'Cancelled' %}
+                            <span class="badge badge-danger">{{ order.Status }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ order.Status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('customer_order_details', order_id=order.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="shopping-bag"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No orders yet</h3>
+        <p>Start shopping to see your orders here</p>
+        <a href="{{ url_for('customer_catalog') }}" class="btn btn-primary" style="margin-top: 1rem;">
+            <i data-lucide="shopping-bag"></i>
+            Browse Products
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

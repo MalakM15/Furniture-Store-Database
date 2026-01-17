@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Supplier Details - {{ supplier.SupplierName }} - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('suppliers') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Suppliers
+        </a>
+        <h1>{{ supplier.SupplierName }}</h1>
+        <p>Supplier details and product information</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('update_supplier', supplier_id=supplier.SupplierID) }}" class="btn btn-secondary">
+            <i data-lucide="edit-2"></i>
+            Edit Supplier
+        </a>
+        {% if is_manager %}
+        <form method="POST" action="{{ url_for('delete_supplier', supplier_id=supplier.SupplierID) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this supplier?');">
+            <button type="submit" class="btn btn-danger">
+                <i data-lucide="trash-2"></i>
+                Delete
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Supplier Information -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="truck" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Supplier Information
+            </h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Supplier ID</span>
+                <span class="info-value" style="color: var(--accent-gold); font-weight: 600;">#{{ supplier.SupplierID }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Supplier Name</span>
+                <span class="info-value" style="font-weight: 600;">{{ supplier.SupplierName }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Contact Person</span>
+                <span class="info-value">{{ supplier.ContactPerson or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ supplier.Email or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Phone Number</span>
+                <span class="info-value">{{ supplier.PhoneNumber or '—' }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="bar-chart-2" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Statistics
+            </h3>
+        </div>
+        <div class="stats-grid" style="grid-template-columns: 1fr;">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="package"></i>
+                </div>
+                <div class="stat-value">{{ supplier.ProductCount or 0 }}</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products from this Supplier -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="package" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Products from {{ supplier.SupplierName }}
+        </h3>
+        <span class="badge badge-info">{{ products|length }} product(s)</span>
+    </div>
+    
+    {% if products %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Material</th>
+                    <th>Color</th>
+                    <th>Dimensions</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Date Added</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-primary);">{{ product.ProductName }}</td>
+                    <td>{{ product.CategoryName or '—' }}</td>
+                    <td>{{ product.Material or '—' }}</td>
+                    <td>{{ product.Color or '—' }}</td>
+                    <td style="color: var(--text-muted); font-size: 0.875rem;">{{ product.Dimensions or '—' }}</td>
+                    <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(product.SellingPrice) }} ₪</td>
+                    <td>
+                        {% if product.StockQuantity > 10 %}
+                            <span class="badge badge-success">{{ product.StockQuantity }}</span>
+                        {% elif product.StockQuantity > 0 %}
+                            <span class="badge badge-warning">{{ product.StockQuantity }}</span>
+                        {% else %}
+                            <span class="badge badge-danger">Out of Stock</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ product.DateAdded.strftime('%b %d, %Y') if product.DateAdded else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 3rem;">
+        <i data-lucide="package-x"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No products found</h3>
+        <p>This supplier has no products yet</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.OrderID }} - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('customer_dashboard') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to My Orders
+        </a>
+        <h1>Order #{{ order.OrderID }}</h1>
+        <p>Order placed on {{ order.OrderDate.strftime('%B %d, %Y') if order.OrderDate else order.OrderDate }}</p>
+    </div>
+    <div>
+        {% if order.Status == 'Completed' %}
+            <span class="badge badge-success" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i data-lucide="check-circle" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                {{ order.Status }}
+            </span>
+        {% elif order.Status == 'Pending' %}
+            <span class="badge badge-warning" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i data-lucide="clock" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                {{ order.Status }}
+            </span>
+        {% elif order.Status == 'Processing' %}
+            <span class="badge badge-info" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i data-lucide="package" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                {{ order.Status }}
+            </span>
+        {% elif order.Status == 'Cancelled' %}
+            <span class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i data-lucide="x-circle" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                {{ order.Status }}
+            </span>
+        {% else %}
+            <span class="badge badge-info" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                {{ order.Status }}
+            </span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Order Info -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="file-text" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Order Information
+            </h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Order ID</span>
+                <span class="info-value" style="color: var(--accent-gold); font-weight: 600;">#{{ order.OrderID }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Order Date</span>
+                <span class="info-value">{{ order.OrderDate.strftime('%B %d, %Y') if order.OrderDate else order.OrderDate }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Handled By</span>
+                <span class="info-value">
+                    {% if order.EmpFirstName %}
+                        {{ order.EmpFirstName }} {{ order.EmpLastName }}
+                    {% else %}
+                        <span style="color: var(--text-muted);">Not assigned yet</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total Amount</span>
+                <span class="info-value" style="font-size: 1.5rem; font-weight: 700; color: var(--accent-gold);">{{ "%.2f"|format(order.TotalAmount) }} ₪</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delivery Info -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="truck" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Delivery Information
+            </h3>
+        </div>
+        {% if delivery %}
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    {% if delivery.Status == 'Delivered' %}
+                        <span class="badge badge-success">{{ delivery.Status }}</span>
+                    {% elif delivery.Status == 'Scheduled' %}
+                        <span class="badge badge-info">{{ delivery.Status }}</span>
+                    {% elif delivery.Status == 'Out for Delivery' %}
+                        <span class="badge badge-warning">{{ delivery.Status }}</span>
+                    {% else %}
+                        <span class="badge badge-danger">{{ delivery.Status }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Address</span>
+                <span class="info-value">{{ delivery.DeliveryAddress }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Scheduled Date</span>
+                <span class="info-value">{{ delivery.ScheduledDate.strftime('%b %d, %Y') if delivery.ScheduledDate else '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Delivered Date</span>
+                <span class="info-value">{{ delivery.DeliveryDate.strftime('%b %d, %Y') if delivery.DeliveryDate else '—' }}</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 2rem;">
+            <i data-lucide="truck"></i>
+            <p>Delivery not scheduled yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Order Products -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="package" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Order Items
+        </h3>
+    </div>
+    {% if order_products %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Details</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order_products %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-primary);">{{ item.ProductName }}</td>
+                    <td>
+                        <span style="color: var(--text-muted);">{{ item.Material }} • {{ item.Color }}</span>
+                    </td>
+                    <td>{{ "%.2f"|format(item.PricePerUnit) }} ₪</td>
+                    <td>
+                        <span class="badge badge-info">× {{ item.Quantity }}</span>
+                    </td>
+                    <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(item.PricePerUnit * item.Quantity) }} ₪</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="text-align: right; font-weight: 600; border-top: 2px solid var(--border-color);">Total:</td>
+                    <td style="font-size: 1.25rem; font-weight: 700; color: var(--accent-gold); border-top: 2px solid var(--border-color);">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No products in this order</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Payments -->
+{% if payments %}
+<div class="card fade-in" style="animation-delay: 0.3s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="credit-card" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Payment History
+        </h3>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.PaymentDate.strftime('%b %d, %Y') if payment.PaymentDate else payment.PaymentDate }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ payment.PaymentMethod }}</span>
+                    </td>
+                    <td style="font-weight: 600; color: var(--success);">{{ "%.2f"|format(payment.AmountPaid) }} ₪</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Cancel Order Button (only if Pending or Processing) -->
+{% if order.Status in ['Pending', 'Processing'] %}
+<div class="card fade-in" style="animation-delay: 0.4s; border: 1px solid rgba(248, 113, 113, 0.3);">
+    <div class="card-header">
+        <h3 class="card-title" style="color: var(--danger);">
+            <i data-lucide="alert-triangle" style="width: 20px; height: 20px; margin-right: 8px;"></i>
+            Cancel Order
+        </h3>
+    </div>
+    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+        If you need to cancel this order, click the button below. Your items will be returned to stock and you will receive a refund if payment was made.
+    </p>
+    <form method="POST" action="{{ url_for('customer_cancel_order', order_id=order.OrderID) }}" onsubmit="return confirm('Are you sure you want to cancel this order? This action cannot be undone.');">
+        <button type="submit" class="btn btn-danger">
+            <i data-lucide="x-circle"></i>
+            Cancel This Order
+        </button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+
