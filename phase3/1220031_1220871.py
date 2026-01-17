@@ -1,5 +1,5 @@
 """
-AMIN Furniture Store, Database Management System
+Database Management System
 Student:Malak Milhem, ID: 1220031
         Layal Hajji, ID: 1220871
 
@@ -2327,5 +2327,6 @@ if __name__ == '__main__':
     print(" Starting Flask application...")
     print(" Access the application at: http://localhost:5000\n")
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 
 
