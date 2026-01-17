@@ -1,5 +1,4 @@
 -- AMIN Furniture Store Database Schema
--- Student IDs: 1220031_1220871
 
 -- Create database if it doesn't exist
 CREATE DATABASE IF NOT EXISTS amin_furniture;
