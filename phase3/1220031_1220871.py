@@ -2724,12 +2724,8 @@ def employees():
     
     try:
         query = """
-            SELECT e.*, 
-                   COUNT(DISTINCT o.OrderID) as OrderCount,
-                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
+            SELECT e.*
             FROM Employees e
-            LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE 1=1
         """
         params = []
@@ -2738,14 +2734,30 @@ def employees():
             query += " AND (e.FirstName LIKE %s OR e.LastName LIKE %s OR e.Email LIKE %s OR e.Position LIKE %s OR e.PhoneNumber LIKE %s)"
             params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%',f'%{search}%'])
         
-        query += " GROUP BY e.EmployeeID, e.FirstName, e.LastName, e.Position, e.HireDate, e.Salary, e.PhoneNumber, e.Email ORDER BY e.FirstName, e.LastName"
+        query += " ORDER BY e.FirstName, e.LastName"
         
         cursor.execute(query, params)
         employees = cursor.fetchall()
-        # Handle NULL TotalSales
+        
+        cursor.execute("""
+            SELECT o.EmployeeID, COUNT(DISTINCT o.OrderID) as OrderCount
+            FROM Orders o
+            GROUP BY o.EmployeeID
+        """)
+        sales_counts = {row['EmployeeID']: row['OrderCount'] for row in cursor.fetchall()}
+        
+        cursor.execute("""
+            SELECT d.EmployeeID, COUNT(DISTINCT d.OrderID) as OrderCount
+            FROM Delivery d
+            GROUP BY d.EmployeeID
+        """)
+        delivery_counts = {row['EmployeeID']: row['OrderCount'] for row in cursor.fetchall()}
+        
         for emp in employees:
-            if emp.get('TotalSales') is None:
-                emp['TotalSales'] = 0
+            if emp.get('Position') == 'Delivery Staff':
+                emp['OrderCount'] = delivery_counts.get(emp['EmployeeID'], 0)
+            else:
+                emp['OrderCount'] = sales_counts.get(emp['EmployeeID'], 0)
         
     except Error as e:
         flash(f'Error fetching employees: {e}', 'error')
