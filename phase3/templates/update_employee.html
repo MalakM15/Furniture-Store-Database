@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Update Employee - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('employees') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Employees
+        </a>
+        <h1>Update Employee</h1>
+        <p>Edit information for {{ employee.FirstName }} {{ employee.LastName }}</p>
+    </div>
+</div>
+
+<div class="fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Edit Employee
+            </h3>
+            <span class="badge badge-info">ID: {{ employee.EmployeeID }}</span>
+        </div>
+        
+        <form method="POST" action="{{ url_for('update_employee', employee_id=employee.EmployeeID) }}" id="employeeForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name * <span id="first_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="first_name" id="first_name" class="form-control" value="{{ employee.FirstName }}" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name * <span id="last_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="last_name" id="last_name" class="form-control" value="{{ employee.LastName }}" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Position * <span id="position_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="text" name="position" id="position" class="form-control" value="{{ employee.Position }}" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Hire Date <span id="hire_date_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="date" name="hire_date" id="hire_date" class="form-control" value="{{ employee.HireDate.strftime('%Y-%m-%d') if employee.HireDate else '' }}">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Format: YYYY-MM-DD, cannot be in future</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Salary (₪) <span id="salary_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="number" name="salary" id="salary" class="form-control" value="{{ employee.Salary if employee.Salary else '' }}" step="0.01" min="0">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Positive numbers only</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" value="{{ employee.Email or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Phone Number <span id="phone_number_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="text" name="phone_number" id="phone_number" class="form-control" value="{{ employee.PhoneNumber or '' }}">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Numbers only</small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save"></i>
+                    Save Changes
+                </button>
+                <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    // Same validation functions as add_employee.html
+    function validateName(name, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!name || !name.trim()) {
+            errorEl.textContent = 'This field is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+            errorEl.textContent = 'Must contain only letters and spaces';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validatePosition(position, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!position || !position.trim()) {
+            errorEl.textContent = 'Position is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (!/^[a-zA-Z\s]+$/.test(position.trim())) {
+            errorEl.textContent = 'Must contain only letters and spaces';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateDate(dateStr, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!dateStr || !dateStr.trim()) {
+            errorEl.style.display = 'none';
+            return true;
+        }
+        
+        const date = new Date(dateStr);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        
+        if (isNaN(date.getTime())) {
+            errorEl.textContent = 'Invalid date format';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        const month = date.getMonth() + 1;
+        if (month < 1 || month > 12) {
+            errorEl.textContent = 'Month must be between 01 and 12';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        if (date > today) {
+            errorEl.textContent = 'Cannot be in the future';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateSalary(salary, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!salary || !salary.trim()) {
+            errorEl.style.display = 'none';
+            return true;
+        }
+        const numSalary = parseFloat(salary);
+        if (isNaN(numSalary) || numSalary < 0) {
+            errorEl.textContent = 'Must be a positive number';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validatePhone(phone, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!phone || !phone.trim()) {
+            errorEl.style.display = 'none';
+            return true;
+        }
+        if (!/^\d+$/.test(phone.trim())) {
+            errorEl.textContent = 'Must contain only numbers';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    // Apply validation to all fields
+    const firstNameInput = document.getElementById('first_name');
+    if (firstNameInput) {
+        firstNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'first_name');
+        });
+        firstNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'first_name');
+        });
+    }
+    
+    const lastNameInput = document.getElementById('last_name');
+    if (lastNameInput) {
+        lastNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'last_name');
+        });
+        lastNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'last_name');
+        });
+    }
+    
+    const positionInput = document.getElementById('position');
+    if (positionInput) {
+        positionInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validatePosition(e.target.value, 'position');
+        });
+        positionInput.addEventListener('blur', function(e) {
+            validatePosition(e.target.value, 'position');
+        });
+    }
+    
+    const hireDateInput = document.getElementById('hire_date');
+    if (hireDateInput) {
+        hireDateInput.addEventListener('change', function(e) {
+            validateDate(e.target.value, 'hire_date');
+        });
+        hireDateInput.addEventListener('blur', function(e) {
+            validateDate(e.target.value, 'hire_date');
+        });
+    }
+    
+    const salaryInput = document.getElementById('salary');
+    if (salaryInput) {
+        salaryInput.addEventListener('input', function(e) {
+            if (e.target.value && parseFloat(e.target.value) < 0) {
+                e.target.value = '';
+            }
+            validateSalary(e.target.value, 'salary');
+        });
+        salaryInput.addEventListener('blur', function(e) {
+            validateSalary(e.target.value, 'salary');
+        });
+    }
+    
+    const phoneInput = document.getElementById('phone_number');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            validatePhone(e.target.value, 'phone_number');
+        });
+        phoneInput.addEventListener('blur', function(e) {
+            validatePhone(e.target.value, 'phone_number');
+        });
+    }
+    
+    // Form submission validation
+    const form = document.getElementById('employeeForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const firstName = document.getElementById('first_name').value;
+            const lastName = document.getElementById('last_name').value;
+            const position = document.getElementById('position').value;
+            const hireDate = document.getElementById('hire_date').value;
+            const salary = document.getElementById('salary').value;
+            const phone = document.getElementById('phone_number').value;
+            
+            let isValid = validateName(firstName, 'first_name') &&
+                         validateName(lastName, 'last_name') &&
+                         validatePosition(position, 'position') &&
+                         validateDate(hireDate, 'hire_date') &&
+                         validateSalary(salary, 'salary') &&
+                         validatePhone(phone, 'phone_number');
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please correct the errors in the form before submitting.');
+            }
+        });
+    }
+</script>
+{% endblock %}
+

@@ -23,6 +23,16 @@
                 <i data-lucide="clock" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                 {{ order.Status }}
             </span>
+        {% elif order.Status == 'Ready to Deliver' %}
+            <span class="badge badge-info" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i data-lucide="package" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                {{ order.Status }}
+            </span>
+        {% elif order.Status == 'Scheduled for Delivery' %}
+            <span class="badge badge-warning" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i data-lucide="truck" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                {{ order.Status }}
+            </span>
         {% elif order.Status == 'Cancelled' %}
             <span class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">
                 <i data-lucide="x-circle" style="width: 16px; height: 16px; margin-right: 6px;"></i>
@@ -210,16 +220,16 @@
         {% if delivery %}
         <div class="info-grid">
             <div class="info-item">
-                <span class="info-label">Status</span>
+                <span class="info-label">Delivery Status</span>
                 <span class="info-value">
-                    {% if delivery.Status == 'Delivered' %}
-                        <span class="badge badge-success">{{ delivery.Status }}</span>
-                    {% elif delivery.Status == 'Scheduled' %}
-                        <span class="badge badge-info">{{ delivery.Status }}</span>
-                    {% elif delivery.Status == 'Out for Delivery' %}
-                        <span class="badge badge-warning">{{ delivery.Status }}</span>
+                    {% if order.Status == 'Completed' %}
+                        <span class="badge badge-success">Delivered</span>
+                    {% elif order.Status == 'Scheduled for Delivery' %}
+                        <span class="badge badge-warning">Scheduled for Delivery</span>
+                    {% elif order.Status == 'Ready to Deliver' %}
+                        <span class="badge badge-info">Ready to Deliver</span>
                     {% else %}
-                        <span class="badge badge-danger">{{ delivery.Status }}</span>
+                        <span class="badge badge-info">Pending</span>
                     {% endif %}
                 </span>
             </div>
@@ -261,6 +271,8 @@
         <select name="status" class="form-control" style="width: auto; min-width: 200px;">
             <option value="Pending" {% if order.Status == 'Pending' %}selected{% endif %}>Pending</option>
             <option value="Processing" {% if order.Status == 'Processing' %}selected{% endif %}>Processing</option>
+            <option value="Ready to Deliver" {% if order.Status == 'Ready to Deliver' %}selected{% endif %}>Ready to Deliver</option>
+            <option value="Scheduled for Delivery" {% if order.Status == 'Scheduled for Delivery' %}selected{% endif %}>Scheduled for Delivery</option>
             <option value="Completed" {% if order.Status == 'Completed' %}selected{% endif %}>Completed</option>
             <option value="Cancelled" {% if order.Status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
         </select>

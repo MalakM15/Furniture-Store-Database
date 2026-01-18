@@ -145,6 +145,16 @@
                                 <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
                                 {{ order.Status }}
                             </span>
+                        {% elif order.Status == 'Ready to Deliver' %}
+                            <span class="badge badge-info">
+                                <i data-lucide="package" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                {{ order.Status }}
+                            </span>
+                        {% elif order.Status == 'Scheduled for Delivery' %}
+                            <span class="badge badge-warning">
+                                <i data-lucide="truck" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                {{ order.Status }}
+                            </span>
                         {% elif order.Status == 'Cancelled' %}
                             <span class="badge badge-danger">
                                 <i data-lucide="x" style="width: 12px; height: 12px; margin-right: 4px;"></i>

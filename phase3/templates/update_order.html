@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Update Order #{{ order.OrderID }} - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('order_details', order_id=order.OrderID) }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Order Details
+        </a>
+        <h1>Update Order #{{ order.OrderID }}</h1>
+        <p>Edit order information</p>
+    </div>
+</div>
+
+<div class="fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Edit Order
+            </h3>
+            <span class="badge badge-info">ID: {{ order.OrderID }}</span>
+        </div>
+        
+        <form method="POST" action="{{ url_for('update_order', order_id=order.OrderID) }}" id="orderForm">
+            <div class="form-group">
+                <label class="form-label">Customer * <span id="customer_id_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <select name="customer_id" id="customer_id" class="form-control" required>
+                    <option value="">Select Customer</option>
+                    {% for customer in customers %}
+                        <option value="{{ customer.CustomerID }}" {% if customer.CustomerID == order.CustomerID %}selected{% endif %}>
+                            {{ customer.FirstName }} {{ customer.LastName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Handled By (Employee)</label>
+                <select name="employee_id" id="employee_id" class="form-control">
+                    <option value="">Select Employee (Optional)</option>
+                    {% for employee in employees %}
+                        <option value="{{ employee.EmployeeID }}" {% if employee.EmployeeID == order.EmployeeID %}selected{% endif %}>
+                            {{ employee.FirstName }} {{ employee.LastName }} - {{ employee.Position }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Order Date * <span id="order_date_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="date" name="order_date" id="order_date" class="form-control" value="{{ order.OrderDate.strftime('%Y-%m-%d') if order.OrderDate else '' }}" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Format: YYYY-MM-DD</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Total Amount (₪) * <span id="total_amount_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="number" name="total_amount" id="total_amount" class="form-control" value="{{ "%.2f"|format(order.TotalAmount) }}" step="0.01" min="0" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Must be a positive number</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Status * <span id="status_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <select name="status" id="status" class="form-control" required>
+                    <option value="Pending" {% if order.Status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Processing" {% if order.Status == 'Processing' %}selected{% endif %}>Processing</option>
+                    <option value="Ready to Deliver" {% if order.Status == 'Ready to Deliver' %}selected{% endif %}>Ready to Deliver</option>
+                    <option value="Scheduled for Delivery" {% if order.Status == 'Scheduled for Delivery' %}selected{% endif %}>Scheduled for Delivery</option>
+                    <option value="Completed" {% if order.Status == 'Completed' %}selected{% endif %}>Completed</option>
+                    <option value="Cancelled" {% if order.Status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save"></i>
+                    Save Changes
+                </button>
+                <a href="{{ url_for('order_details', order_id=order.OrderID) }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    // Validation functions
+    function validateCustomer(customerId, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!customerId || customerId === '') {
+            errorEl.textContent = 'Customer is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateDate(dateStr, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!dateStr || !dateStr.trim()) {
+            errorEl.textContent = 'Order date is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+            errorEl.textContent = 'Format must be YYYY-MM-DD';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        const date = new Date(dateStr);
+        const month = date.getMonth() + 1;
+        
+        if (isNaN(date.getTime())) {
+            errorEl.textContent = 'Invalid date';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        if (month < 1 || month > 12) {
+            errorEl.textContent = 'Month must be between 01 and 12';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        // For orders, future dates are allowed, so no check for future dates
+        
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateAmount(amount, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!amount || !amount.trim()) {
+            errorEl.textContent = 'Total amount is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            errorEl.textContent = 'Must be a positive number';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateStatus(status, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!status || status === '') {
+            errorEl.textContent = 'Status is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    // Customer validation
+    const customerInput = document.getElementById('customer_id');
+    if (customerInput) {
+        customerInput.addEventListener('change', function(e) {
+            validateCustomer(e.target.value, 'customer_id');
+        });
+        customerInput.addEventListener('blur', function(e) {
+            validateCustomer(e.target.value, 'customer_id');
+        });
+    }
+    
+    // Order date validation
+    const orderDateInput = document.getElementById('order_date');
+    if (orderDateInput) {
+        orderDateInput.addEventListener('change', function(e) {
+            validateDate(e.target.value, 'order_date');
+        });
+        orderDateInput.addEventListener('blur', function(e) {
+            validateDate(e.target.value, 'order_date');
+        });
+    }
+    
+    // Total amount validation
+    const totalAmountInput = document.getElementById('total_amount');
+    if (totalAmountInput) {
+        totalAmountInput.addEventListener('input', function(e) {
+            if (e.target.value && parseFloat(e.target.value) < 0) {
+                e.target.value = '';
+            }
+            validateAmount(e.target.value, 'total_amount');
+        });
+        totalAmountInput.addEventListener('blur', function(e) {
+            validateAmount(e.target.value, 'total_amount');
+        });
+    }
+    
+    // Status validation
+    const statusInput = document.getElementById('status');
+    if (statusInput) {
+        statusInput.addEventListener('change', function(e) {
+            validateStatus(e.target.value, 'status');
+        });
+    }
+    
+    // Form submission validation
+    const form = document.getElementById('orderForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const customerId = document.getElementById('customer_id').value;
+            const orderDate = document.getElementById('order_date').value;
+            const totalAmount = document.getElementById('total_amount').value;
+            const status = document.getElementById('status').value;
+            
+            let isValid = validateCustomer(customerId, 'customer_id') &&
+                         validateDate(orderDate, 'order_date') &&
+                         validateAmount(totalAmount, 'total_amount') &&
+                         validateStatus(status, 'status');
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please correct the errors in the form before submitting.');
+            }
+        });
+    }
+</script>
+{% endblock %}
+

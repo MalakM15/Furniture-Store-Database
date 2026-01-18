@@ -6,6 +6,9 @@ CREATE DATABASE IF NOT EXISTS amin_furniture;
 
 USE amin_furniture;
 
+-- DROP TABLES IF EXISTS
+DROP TABLE IF EXISTS Delivery_Employee, Delivery, Payments, Order_Product, Purchase_Product, Orders, Purchases, Products, Employees, Customers, Suppliers, Categories;
+
 -- CREATE TABLES
 
 
@@ -64,7 +67,7 @@ CREATE TABLE Orders (
     CustomerID INT,
     EmployeeID INT,
     OrderDate DATE NOT NULL,
-    TotalAmount DECIMAL(10, 2) NOT NULL,
+    TotalAmount DECIMAL(10, 2) NOT NULL, 
     Status VARCHAR(50) DEFAULT 'Pending',
     FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID) ON DELETE SET NULL,
     FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID) ON DELETE SET NULL
@@ -118,7 +121,6 @@ CREATE TABLE Delivery (
     DeliveryAddress TEXT,
     ScheduledDate DATE,
     DeliveryDate DATE,
-    Status VARCHAR(50) DEFAULT 'Scheduled',
     FOREIGN KEY (OrderID) REFERENCES Orders(OrderID) ON DELETE CASCADE,
     FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID) ON DELETE SET NULL
 );
@@ -152,7 +154,7 @@ INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNum
 ('Khalil', 'Abu Hamad', 'Manager', '2020-01-15', 5000.00, '0599111111', 'khalil@aminfurniture.ps'),
 ('Layla', 'Mahmoud', 'Sales Associate', '2021-03-20', 2500.00, '0599222222', 'layla@aminfurniture.ps'),
 ('Youssef', 'Ibrahim', 'Sales Associate', '2021-05-10', 2500.00, '0599333333', 'youssef@aminfurniture.ps'),
-('Nour', 'Hassan', 'Delivery Staff', '2022-01-08', 2000.00, '0599444444', 'nour@aminfurniture.ps'),
+('Hassan', 'Hassan', 'Delivery Staff', '2022-01-08', 2000.00, '0599444444', 'hassan@aminfurniture.ps'),
 ('Rami', 'Said', 'Delivery Staff', '2022-02-15', 2000.00, '0599555555', 'rami@aminfurniture.ps'),
 ('Hala', 'Omar', 'Warehouse Manager', '2020-06-01', 3500.00, '0599666666', 'hala@aminfurniture.ps');
 
@@ -192,9 +194,11 @@ INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, TotalAmount, Status) VALU
 (5, 3, '2025-07-05', 1200.00, 'Completed'),
 (6, 2, '2025-07-10', 8000.00, 'Completed'),
 (7, 3, '2025-07-15', 1500.00, 'Completed'),
-(8, 2, '2025-11-20', 3000.00, 'Pending'),
-(1, 3, '2025-11-25', 1200.00, 'Pending'),
-(2, 2, '2025-11-01', 1800.00, 'Pending');
+(8, 2, '2025-11-20', 3000.00, 'Ready to Deliver'),
+(1, 3, '2025-11-25', 1200.00, 'Processing'),
+(2, 2, '2025-11-01', 1800.00, 'Pending'),
+(3, 2, '2025-11-28', 2000.00, 'Scheduled for Delivery'),
+(4, 3, '2025-11-30', 1500.00, 'Ready to Deliver');
 
 
 INSERT INTO Order_Product (OrderID, ProductID, Quantity, PricePerUnit) VALUES
@@ -208,7 +212,10 @@ INSERT INTO Order_Product (OrderID, ProductID, Quantity, PricePerUnit) VALUES
 (7, 8, 1, 1500.00),
 (8, 13, 1, 3000.00),
 (9, 2, 1, 1200.00),
-(10, 12, 1, 1800.00);
+(10, 12, 1, 1800.00),
+(11, 3, 1, 2000.00),
+(12, 6, 1, 800.00),
+(12, 7, 1, 700.00);
 
 
 INSERT INTO Purchases (SupplierID, PurchaseDate, TotalCost, ReceivedBy) VALUES
@@ -241,12 +248,12 @@ INSERT INTO Purchase_Product (PurchaseID, ProductID, QuantityPurchased, CostPerU
 
 
 INSERT INTO Payments (OrderID, PaymentDate, AmountPaid, PaymentMethod) VALUES
-(1, '2023-06-10', 1500.00, 'Cash'),
+(1, '2023-06-10', 1500.00, 'Card'),
 (2, '2023-06-15', 3500.00, 'Card'),
 (3, '2023-06-20', 3000.00, 'Bank Transfer'),
 (3, '2023-06-21', 2000.00, 'Bank Transfer'),
 (4, '2023-07-01', 2500.00, 'Card'),
-(5, '2023-07-05', 1200.00, 'Cash'),
+(5, '2023-07-05', 1200.00, 'Card'),
 (6, '2023-07-10', 5000.00, 'Bank Transfer'),
 (6, '2023-07-11', 3000.00, 'Bank Transfer'),
 (7, '2023-07-15', 1500.00, 'Card'),
@@ -254,17 +261,19 @@ INSERT INTO Payments (OrderID, PaymentDate, AmountPaid, PaymentMethod) VALUES
 (8, '2023-07-21', 1500.00, 'E-payment');
 
 
-INSERT INTO Delivery (OrderID, EmployeeID, DeliveryAddress, ScheduledDate, DeliveryDate, Status) VALUES
-(1, 4, 'Ramallah, Al-Bireh Street', '2023-06-12', '2023-06-12', 'Delivered'),
-(2, 4, 'Ramallah, Al-Manara Square', '2023-06-17', '2023-06-17', 'Delivered'),
-(3, 5, 'Ramallah, Al-Irsal Street', '2023-06-22', '2023-06-22', 'Delivered'),
-(4, 4, 'Ramallah, Al-Masyoun', '2023-07-03', '2023-07-03', 'Delivered'),
-(5, 5, 'Ramallah, Al-Tireh', '2023-07-07', '2023-07-07', 'Delivered'),
-(6, 4, 'Ramallah, Al-Balou', '2023-07-12', '2023-07-12', 'Delivered'),
-(7, 5, 'Ramallah, Al-Jalazoun', '2023-07-17', '2023-07-17', 'Delivered'),
-(8, 4, 'Ramallah, Al-Masyoun', '2023-07-22', NULL, 'Scheduled'),
-(9, 5, 'Ramallah, Al-Bireh Street', '2023-07-27', NULL, 'Scheduled'),
-(10, 4, 'Ramallah, Al-Manara Square', '2023-08-03', NULL, 'Scheduled');
+INSERT INTO Delivery (OrderID, EmployeeID, DeliveryAddress, ScheduledDate, DeliveryDate) VALUES
+(1, 4, 'Ramallah, Al-Bireh Street', '2023-06-12', '2023-06-12'),
+(2, 4, 'Ramallah, Al-Manara Square', '2023-06-17', '2023-06-17'),
+(3, 5, 'Ramallah, Al-Irsal Street', '2023-06-22', '2023-06-22'),
+(4, 4, 'Ramallah, Al-Masyoun', '2023-07-03', '2023-07-03'),
+(5, 5, 'Ramallah, Al-Tireh', '2023-07-07', '2023-07-07'),
+(6, 4, 'Ramallah, Al-Balou', '2023-07-12', '2023-07-12'),
+(7, 5, 'Ramallah, Al-Jalazoun', '2023-07-17', '2023-07-17'),
+(8, NULL, 'Ramallah, Al-Masyoun', '2023-11-22', NULL),
+(9, NULL, 'Ramallah, Al-Bireh Street', NULL, NULL),
+(10, NULL, 'Ramallah, Al-Manara Square', NULL, NULL),
+(11, 5, 'Ramallah, Al-Irsal Street', '2023-11-30', NULL),
+(12, NULL, 'Ramallah, Al-Masyoun', NULL, NULL);
 
 
 INSERT INTO Delivery_Employee (DeliveryID, EmployeeID) VALUES
@@ -276,6 +285,4 @@ INSERT INTO Delivery_Employee (DeliveryID, EmployeeID) VALUES
 (6, 4),
 (6, 5),
 (7, 5),
-(8, 4),
-(9, 5),
-(10, 4);
+(11, 5);

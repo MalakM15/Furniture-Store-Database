@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Employees - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Employees</h1>
+        <p>Manage employee information</p>
+    </div>
+    <a href="{{ url_for('add_employee') }}" class="btn btn-primary">
+        <i data-lucide="user-plus"></i>
+        Add Employee
+    </a>
+</div>
+
+<!-- Search Section -->
+<div class="card fade-in" style="animation-delay: 0.1s;">
+    <form method="GET" action="{{ url_for('employees') }}">
+        <div class="search-container">
+            <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" name="search" placeholder="Search employees by name, position, or email..." value="{{ search }}" class="form-control" style="padding-left: 3rem;">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i>
+                Search
+            </button>
+            {% if search %}
+            <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+                <i data-lucide="x"></i>
+                Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if employees %}
+<!-- Employees Table -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">Employee List</h3>
+        <span style="color: var(--text-muted); font-size: 0.875rem;">
+            {{ employees|length }} employee(s) found
+        </span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Orders</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in employees %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ employee.EmployeeID }}</td>
+                    <td style="font-weight: 500; color: var(--text-primary);">{{ employee.FirstName }} {{ employee.LastName }}</td>
+                    <td>
+                        {% if employee.Position == 'Manager' %}
+                            <span class="badge badge-warning">{{ employee.Position }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ employee.Position }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-info">{{ employee.OrderCount or 0 }}</span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('employee_details', employee_id=employee.EmployeeID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="empty-state">
+        <i data-lucide="user-cog"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No employees found</h3>
+        <p>{% if search %}Try adjusting your search{% else %}Start by adding your first employee{% endif %}</p>
+        {% if not search %}
+        <a href="{{ url_for('add_employee') }}" class="btn btn-primary" style="margin-top: 1rem;">
+            <i data-lucide="user-plus"></i>
+            Add Employee
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

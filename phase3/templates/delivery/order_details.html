@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.OrderID }} - Delivery Details - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('delivery_dashboard') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Dashboard
+        </a>
+        <h1>Order #{{ order.OrderID }}</h1>
+        <p>Delivery information and order details</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <!-- Order Information -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="package" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Order Information
+            </h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Order ID</span>
+                <span class="info-value" style="color: var(--accent-gold); font-weight: 600;">#{{ order.OrderID }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Order Date</span>
+                <span class="info-value">{{ order.OrderDate.strftime('%B %d, %Y') if order.OrderDate else '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Order Status</span>
+                <span class="info-value">
+                    {% if order.Status == 'Completed' %}
+                        <span class="badge badge-success">{{ order.Status }}</span>
+                    {% elif order.Status == 'Pending' %}
+                        <span class="badge badge-warning">{{ order.Status }}</span>
+                    {% elif order.Status == 'Processing' %}
+                        <span class="badge badge-info">{{ order.Status }}</span>
+                    {% elif order.Status == 'Ready to Deliver' %}
+                        <span class="badge badge-info">{{ order.Status }}</span>
+                    {% elif order.Status == 'Scheduled for Delivery' %}
+                        <span class="badge badge-warning">{{ order.Status }}</span>
+                    {% else %}
+                        <span class="badge badge-info">{{ order.Status }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total Amount</span>
+                <span class="info-value" style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(order.TotalAmount) }} ₪</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Information -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="user" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Customer Information
+            </h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Name</span>
+                <span class="info-value">{{ order.FirstName }} {{ order.LastName }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ order.Email or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Phone</span>
+                <span class="info-value">{{ order.PhoneNumber or '—' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delivery Information -->
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="truck" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Delivery Information
+        </h3>
+    </div>
+    
+    {% if not is_assigned and order.Status == 'Ready to Deliver' %}
+    <div style="padding: 1.5rem; text-align: center; border: 2px dashed var(--border-color); border-radius: 12px; margin: 1rem;">
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">This order is ready for delivery. Take it to assign yourself.</p>
+        <form method="POST" action="{{ url_for('delivery_take_order', order_id=order.OrderID) }}" style="display: inline;">
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="check-circle"></i>
+                Take This Delivery
+            </button>
+        </form>
+    </div>
+    {% elif is_assigned or order.DeliveryID %}
+    <form method="POST" action="{{ url_for('delivery_update_order', order_id=order.OrderID) }}" id="deliveryForm">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem;">
+            <div class="form-group">
+                <label class="form-label">Delivery Status *</label>
+                <select name="delivery_status" id="delivery_status" class="form-control" required>
+                    <option value="Scheduled for Delivery" {% if order.Status == 'Scheduled for Delivery' %}selected{% endif %}>Scheduled for Delivery</option>
+                    <option value="Delivered" {% if order.Status == 'Completed' %}selected{% endif %}>Delivered (Completed)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Scheduled Date</label>
+                <input type="date" name="scheduled_date" id="scheduled_date" class="form-control" value="{{ order.ScheduledDate.strftime('%Y-%m-%d') if order.ScheduledDate else '' }}" {% if order.Status != 'Scheduled for Delivery' %}disabled{% endif %}>
+                <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="scheduled_date_help">
+                    {% if order.Status != 'Scheduled for Delivery' %}
+                        Only available when status is "Scheduled for Delivery"
+                    {% endif %}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Delivery Date</label>
+                <input type="date" name="delivery_date" id="delivery_date" class="form-control" value="{{ order.DeliveryDate.strftime('%Y-%m-%d') if order.DeliveryDate else '' }}" {% if order.Status != 'Completed' %}disabled{% endif %}>
+                <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="delivery_date_help">
+                    {% if order.Status != 'Completed' %}
+                        Only available when status is "Delivered"
+                    {% else %}
+                        Must be today or a past date
+                    {% endif %}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Delivery Address</label>
+                <textarea class="form-control" rows="3" readonly style="background: var(--bg-secondary);">{{ order.DeliveryAddress or '—' }}</textarea>
+            </div>
+        </div>
+        
+        <div style="padding: 0 1.5rem 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="save"></i>
+                Update Delivery Information
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Order Products -->
+<div class="card fade-in" style="animation-delay: 0.3s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="list" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Order Items
+        </h3>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order_products %}
+                <tr>
+                    <td style="font-weight: 500;">{{ item.ProductName }}</td>
+                    <td>{{ item.Quantity }}</td>
+                    <td>{{ "%.2f"|format(item.PricePerUnit) }} ₪</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(item.Quantity * item.PricePerUnit) }} ₪</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    // Enable/disable date fields based on delivery status
+    const deliveryStatus = document.getElementById('delivery_status');
+    const scheduledDate = document.getElementById('scheduled_date');
+    const deliveryDate = document.getElementById('delivery_date');
+    const scheduledDateHelp = document.getElementById('scheduled_date_help');
+    const deliveryDateHelp = document.getElementById('delivery_date_help');
+    
+    function updateDateFields() {
+        const status = deliveryStatus.value;
+        
+        if (status === 'Scheduled for Delivery') {
+            // Enable scheduled date, disable delivery date
+            scheduledDate.disabled = false;
+            scheduledDate.removeAttribute('readonly');
+            // Remove max restriction for scheduled date (can be future)
+            scheduledDate.removeAttribute('max');
+            deliveryDate.disabled = true;
+            deliveryDate.removeAttribute('max');
+            scheduledDateHelp.textContent = 'Set the scheduled delivery date (must be today or future)';
+            deliveryDateHelp.textContent = 'Only available when status is "Delivered"';
+        } else if (status === 'Delivered') {
+            // Enable delivery date, disable scheduled date
+            deliveryDate.disabled = false;
+            deliveryDate.removeAttribute('readonly');
+            // Set max date to today (cannot select future dates)
+            const today = new Date().toISOString().split('T')[0];
+            deliveryDate.setAttribute('max', today);
+            scheduledDate.disabled = true;
+            deliveryDateHelp.textContent = 'Set the actual delivery date (must be today or a past date, cannot be in the future)';
+            scheduledDateHelp.textContent = 'Only available when status is "Scheduled for Delivery"';
+        }
+    }
+    
+    // Update fields on page load
+    updateDateFields();
+    
+    // Update fields when status changes
+    deliveryStatus.addEventListener('change', updateDateFields);
+</script>
+{% endblock %}
+

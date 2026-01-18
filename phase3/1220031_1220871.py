@@ -34,7 +34,7 @@ def validate_phone(phone):
         return False, 'Phone number must contain only numbers!'
     return True, None
 
-def validate_date(date_str, field_name="Date"):
+def validate_date(date_str, field_name="Date", allow_future=False):
     """Validate date format (YYYY-MM-DD) and that it's a real date"""
     if not date_str or not date_str.strip():
         return True, None  # Date is optional in some cases
@@ -51,9 +51,13 @@ def validate_date(date_str, field_name="Date"):
         if date_obj.month < 1 or date_obj.month > 12:
             return False, f'{field_name} month must be between 01 and 12!'
         
-        # Check date is not in the future (for hire_date)
-        if date_obj > datetime.now().date():
+        # Check date is not in the future (only for hire_date, not for order_date)
+        if not allow_future and date_obj > datetime.now().date():
             return False, f'{field_name} cannot be in the future!'
+        
+        # Check date is not in the past (for delivery/scheduled dates that must be in future)
+        if allow_future and date_obj < datetime.now().date():
+            return False, f'{field_name} cannot be in the past! Must be today or a future date.'
         
         return True, None
     except ValueError:
@@ -253,9 +257,15 @@ def login():
                     flash(f'Welcome back, {user["FirstName"]}!', 'success')
                     return redirect(url_for('customer_dashboard'))
             
-            elif user_type in ['employee', 'manager']:
+            elif user_type in ['employee', 'manager', 'delivery_staff']:
                 # Check employee login
-                position_filter = "Manager" if user_type == 'manager' else "Sales Associate"
+                if user_type == 'manager':
+                    position_filter = "Manager"
+                elif user_type == 'delivery_staff':
+                    position_filter = "Delivery Staff"
+                else:
+                    position_filter = "Sales Associate"
+                    
                 cursor.execute("""
                     SELECT EmployeeID, FirstName, LastName, Email, Position
                     FROM Employees
@@ -266,10 +276,20 @@ def login():
                 if user:
                     session['user_id'] = user['EmployeeID']
                     session['user_name'] = f"{user['FirstName']} {user['LastName']}"
-                    session['role'] = 'manager' if user['Position'] == 'Manager' else 'employee'
+                    if user['Position'] == 'Manager':
+                        session['role'] = 'manager'
+                    elif user['Position'] == 'Delivery Staff':
+                        session['role'] = 'delivery_staff'
+                    else:
+                        session['role'] = 'employee'
                     session['user_type'] = user['Position'].lower().replace(' ', '_')
                     flash(f'Welcome back, {user["FirstName"]}!', 'success')
-                    return redirect(url_for('employee_dashboard'))
+                    
+                    # Redirect based on role
+                    if session['role'] == 'delivery_staff':
+                        return redirect(url_for('delivery_dashboard'))
+                    else:
+                        return redirect(url_for('employee_dashboard'))
             
             flash('Invalid email or password. Please try again.', 'error')
             
@@ -653,8 +673,8 @@ def customer_checkout():
             if delivery_address:
                 scheduled_date = datetime.now().date()
                 cursor.execute("""
-                    INSERT INTO Delivery (OrderID, DeliveryAddress, ScheduledDate, Status)
-                    VALUES (%s, %s, %s, 'Scheduled')
+                    INSERT INTO Delivery (OrderID, DeliveryAddress, ScheduledDate)
+                    VALUES (%s, %s, %s)
                 """, (order_id, delivery_address, scheduled_date))
             
             conn.commit()
@@ -781,12 +801,14 @@ def customer_cancel_order(order_id):
             flash('Order not found or you do not have permission!', 'error')
             return redirect(url_for('customer_dashboard'))
         
-        if order['Status'] == 'Completed':
-            flash('Cannot cancel a completed order!', 'error')
-            return redirect(url_for('customer_order_details', order_id=order_id))
-        
-        if order['Status'] == 'Cancelled':
-            flash('Order is already cancelled!', 'error')
+        # Only allow cancellation for Pending or Processing orders
+        if order['Status'] not in ['Pending', 'Processing']:
+            if order['Status'] == 'Completed':
+                flash('Cannot cancel a completed order!', 'error')
+            elif order['Status'] == 'Cancelled':
+                flash('Order is already cancelled!', 'error')
+            else:
+                flash(f'Cannot cancel order with status "{order["Status"]}". Only Pending or Processing orders can be cancelled.', 'error')
             return redirect(url_for('customer_order_details', order_id=order_id))
         
         # Update order status to Cancelled
@@ -879,7 +901,7 @@ def customer_profile():
 
 @app.route('/employee/profile')
 @login_required
-@role_required('employee', 'manager')
+@role_required('employee','delivery_staff','manager')
 def employee_profile():
     """Employee/Manager profile page"""
     conn = get_db_connection()
@@ -1327,22 +1349,48 @@ def update_order_status(order_id):
             flash('Order not found!', 'error')
             return redirect(url_for('orders'))
         
-        # If order has no employee assigned OR status is changing from Pending, assign current employee
-        if not current_order['EmployeeID'] or current_order['Status'] == 'Pending':
+        # Validate status transitions for employees/managers
+        valid_statuses = ['Pending', 'Processing', 'Ready to Deliver', 'Scheduled for Delivery', 'Completed']
+        if new_status not in valid_statuses:
+            flash('Invalid status!', 'error')
+            return redirect(url_for('order_details', order_id=order_id))
+        
+        # If changing from Pending, employee must assign themselves
+        # Employees can change from Pending to Processing or Ready to Deliver
+        if current_order['Status'] == 'Pending' and new_status in ['Processing', 'Ready to Deliver']:
             cursor.execute("""
                 UPDATE Orders 
                 SET Status = %s, EmployeeID = %s 
                 WHERE OrderID = %s
             """, (new_status, employee_id, order_id))
             flash(f'Order status updated to {new_status} and assigned to you!', 'success')
-        else:
-            # Just update status if employee already assigned
+        elif current_order['Status'] in ['Processing'] and new_status == 'Ready to Deliver':
+            # Can change Processing to Ready to Deliver
+            if not current_order['EmployeeID']:
+                cursor.execute("""
+                    UPDATE Orders 
+                    SET Status = %s, EmployeeID = %s 
+                    WHERE OrderID = %s
+                """, (new_status, employee_id, order_id))
+                flash(f'Order status updated to {new_status} and assigned to you!', 'success')
+            else:
+                cursor.execute("""
+                    UPDATE Orders 
+                    SET Status = %s 
+                    WHERE OrderID = %s
+                """, (new_status, order_id))
+                flash(f'Order status updated to {new_status}!', 'success')
+        elif current_order['EmployeeID'] == employee_id or session.get('role') == 'manager':
+            # Employee already assigned or manager can change status
             cursor.execute("""
                 UPDATE Orders 
                 SET Status = %s 
                 WHERE OrderID = %s
             """, (new_status, order_id))
             flash(f'Order status updated to {new_status}!', 'success')
+        else:
+            flash('You can only update orders assigned to you!', 'error')
+            return redirect(url_for('order_details', order_id=order_id))
         
         conn.commit()
     except Error as e:
@@ -1367,25 +1415,42 @@ def update_order(order_id):
     cursor = conn.cursor(dictionary=True)
     
     if request.method == 'POST':
+        # Get and validate input
+        customer_id = request.form.get('customer_id', '').strip()
+        employee_id = request.form.get('employee_id', '').strip() or None
+        order_date = request.form.get('order_date', '').strip()
+        total_amount = request.form.get('total_amount', '').strip()
+        status = request.form.get('status', '').strip()
+        
+        # Validate required fields
+        if not customer_id or not order_date or not total_amount or not status:
+            flash('Please fill in all required fields!', 'error')
+            return redirect(url_for('update_order', order_id=order_id))
+        
+        # Validate order date (allow future dates for orders)
+        is_valid, error_msg = validate_date(order_date, 'Order date', allow_future=True)
+        if not is_valid:
+            flash(error_msg, 'error')
+            return redirect(url_for('update_order', order_id=order_id))
+        
+        # Validate total amount (positive number)
         try:
-            customer_id = request.form.get('customer_id')
-            employee_id = request.form.get('employee_id') or None
-            order_date = request.form.get('order_date')
-            total_amount = request.form.get('total_amount')
-            status = request.form.get('status')
-            
-            # Validate required fields
-            if not customer_id or not order_date or not total_amount or not status:
-                flash('Please fill in all required fields!', 'error')
+            amount = float(total_amount)
+            if amount <= 0:
+                flash('Total amount must be a positive number!', 'error')
                 return redirect(url_for('update_order', order_id=order_id))
-            
+        except ValueError:
+            flash('Total amount must be a valid number!', 'error')
+            return redirect(url_for('update_order', order_id=order_id))
+        
+        try:
             # Update order
             cursor.execute("""
                 UPDATE Orders 
                 SET CustomerID = %s, EmployeeID = %s, OrderDate = %s, 
                     TotalAmount = %s, Status = %s
                 WHERE OrderID = %s
-            """, (customer_id, employee_id, order_date, total_amount, status, order_id))
+            """, (customer_id, employee_id, order_date, amount, status, order_id))
             
             conn.commit()
             flash('Order updated successfully!', 'success')
@@ -1560,7 +1625,7 @@ def customers():
             query += " AND (FirstName LIKE %s OR LastName LIKE %s OR Email LIKE %s OR PhoneNumber LIKE %s)"
             params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%'])
         
-        query += " ORDER BY LastName, FirstName"
+        query += " ORDER BY FirstName, LastName"
         
         cursor.execute(query, params)
         customers = cursor.fetchall()
@@ -1758,8 +1823,8 @@ def suppliers():
         params = []
         
         if search:
-            query += " AND (SupplierName LIKE %s OR ContactPerson LIKE %s OR Email LIKE %s)"
-            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+            query += " AND (SupplierName LIKE %s OR ContactPerson LIKE %s OR Email LIKE %s OR PhoneNumber LIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%'])
         
         query += " GROUP BY s.SupplierID ORDER BY s.SupplierName"
         
@@ -1825,9 +1890,29 @@ def supplier_details(supplier_id):
     return render_template('supplier_details.html', supplier=supplier, products=products, is_manager=is_manager)
 
 @app.route('/suppliers/add', methods=['GET', 'POST'])
+@login_required
+@role_required('employee', 'manager')
 def add_supplier():
     """Add a new supplier"""
     if request.method == 'POST':
+        # Validate input
+        contact_person = request.form.get('contact_person', '').strip()
+        phone_number = request.form.get('phone_number', '').strip()
+        
+        # Validate contact person (if provided)
+        if contact_person:
+            is_valid, error_msg = validate_name(contact_person, 'Contact person')
+            if not is_valid:
+                flash(error_msg, 'error')
+                return redirect(url_for('add_supplier'))
+        
+        # Validate phone number (if provided)
+        if phone_number:
+            is_valid, error_msg = validate_phone(phone_number)
+            if not is_valid:
+                flash(error_msg, 'error')
+                return redirect(url_for('add_supplier'))
+        
         conn = get_db_connection()
         if not conn:
             flash('Database connection failed!', 'error')
@@ -1839,10 +1924,10 @@ def add_supplier():
                 INSERT INTO Suppliers (SupplierName, ContactPerson, PhoneNumber, Email)
                 VALUES (%s, %s, %s, %s)
             """, (
-                request.form['supplier_name'],
-                request.form['contact_person'] if request.form['contact_person'] else None,
-                request.form['phone_number'] if request.form['phone_number'] else None,
-                request.form['email'] if request.form['email'] else None
+                request.form.get('supplier_name', '').strip(),
+                contact_person if contact_person else None,
+                phone_number if phone_number else None,
+                request.form.get('email', '').strip() or None
             ))
             conn.commit()
             flash('Supplier added successfully!', 'success')
@@ -1867,6 +1952,24 @@ def update_supplier(supplier_id):
     cursor = conn.cursor(dictionary=True)
     
     if request.method == 'POST':
+        # Validate input
+        contact_person = request.form.get('contact_person', '').strip()
+        phone_number = request.form.get('phone_number', '').strip()
+        
+        # Validate contact person (if provided)
+        if contact_person:
+            is_valid, error_msg = validate_name(contact_person, 'Contact person')
+            if not is_valid:
+                flash(error_msg, 'error')
+                return redirect(url_for('update_supplier', supplier_id=supplier_id))
+        
+        # Validate phone number (if provided)
+        if phone_number:
+            is_valid, error_msg = validate_phone(phone_number)
+            if not is_valid:
+                flash(error_msg, 'error')
+                return redirect(url_for('update_supplier', supplier_id=supplier_id))
+        
         try:
             cursor.execute("""
                 UPDATE Suppliers
@@ -1874,10 +1977,10 @@ def update_supplier(supplier_id):
                     PhoneNumber = %s, Email = %s
                 WHERE SupplierID = %s
             """, (
-                request.form['supplier_name'],
-                request.form['contact_person'] if request.form['contact_person'] else None,
-                request.form['phone_number'] if request.form['phone_number'] else None,
-                request.form['email'] if request.form['email'] else None,
+                request.form.get('supplier_name', '').strip(),
+                contact_person if contact_person else None,
+                phone_number if phone_number else None,
+                request.form.get('email', '').strip() or None,
                 supplier_id
             ))
             conn.commit()
@@ -1957,8 +2060,8 @@ def employees():
         params = []
         
         if search:
-            query += " AND (e.FirstName LIKE %s OR e.LastName LIKE %s OR e.Email LIKE %s OR e.Position LIKE %s)"
-            params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%'])
+            query += " AND (e.FirstName LIKE %s OR e.LastName LIKE %s OR e.Email LIKE %s OR e.Position LIKE %s OR e.PhoneNumber LIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%',f'%{search}%'])
         
         query += " GROUP BY e.EmployeeID ORDER BY e.FirstName, e.LastName"
         
@@ -1973,6 +2076,55 @@ def employees():
         conn.close()
     
     return render_template('employees.html', employees=employees, search=search)
+
+@app.route('/employees/<int:employee_id>')
+@login_required
+@role_required('manager')
+def employee_details(employee_id):
+    """View employee details (Manager only)"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('employees'))
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # Get employee information with statistics
+        cursor.execute("""
+            SELECT e.*, 
+                   COUNT(o.OrderID) as OrderCount,
+                   COALESCE(SUM(o.TotalAmount), 0) as TotalSales
+            FROM Employees e
+            LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
+            WHERE e.EmployeeID = %s
+            GROUP BY e.EmployeeID
+        """, (employee_id,))
+        employee = cursor.fetchone()
+        
+        if not employee:
+            flash('Employee not found!', 'error')
+            return redirect(url_for('employees'))
+        
+        # Get orders handled by this employee
+        cursor.execute("""
+            SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber
+            FROM Orders o
+            LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            WHERE o.EmployeeID = %s
+            ORDER BY o.OrderDate DESC
+            LIMIT 10
+        """, (employee_id,))
+        orders = cursor.fetchall()
+        
+    except Error as e:
+        flash(f'Error fetching employee details: {e}', 'error')
+        return redirect(url_for('employees'))
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('employee_details.html', employee=employee, orders=orders)
 
 @app.route('/employees/add', methods=['GET', 'POST'])
 @login_required
@@ -2321,11 +2473,335 @@ def create_order():
                          employees=employees, 
                          products=products)
 
+# ==================== DELIVERY STAFF ROUTES ====================
+
+@app.route('/delivery/dashboard')
+@login_required
+@role_required('delivery_staff')
+def delivery_dashboard():
+    """Delivery staff dashboard - shows orders that need delivery"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return render_template('delivery/dashboard.html', orders=[], my_deliveries=[])
+    
+    cursor = conn.cursor(dictionary=True)
+    employee_id = session.get('user_id')
+    
+    try:
+        # Get orders that are ready to deliver (only status "Ready to Deliver")
+        cursor.execute("""
+            SELECT DISTINCT o.OrderID, o.OrderDate, o.TotalAmount, o.Status as OrderStatus,
+                   c.FirstName, c.LastName, c.PhoneNumber, c.Email,
+                   d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
+                   d.EmployeeID as AssignedEmployeeID
+            FROM Orders o
+            LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Delivery d ON o.OrderID = d.OrderID
+            WHERE o.Status = 'Ready to Deliver'
+            ORDER BY o.OrderDate DESC
+        """)
+        available_orders = cursor.fetchall()
+        
+        # Get my assigned deliveries (orders I'm delivering - status Scheduled for Delivery or Ready to Deliver)
+        cursor.execute("""
+            SELECT d.*, o.OrderDate, o.TotalAmount, o.Status as OrderStatus,
+                   c.FirstName, c.LastName, c.PhoneNumber, c.Email
+            FROM Delivery d
+            JOIN Orders o ON d.OrderID = o.OrderID
+            LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            WHERE d.EmployeeID = %s AND o.Status IN ('Ready to Deliver', 'Scheduled for Delivery')
+            ORDER BY d.ScheduledDate DESC
+        """, (employee_id,))
+        my_deliveries = cursor.fetchall()
+        
+        # Get my completed deliveries (for statistics)
+        cursor.execute("""
+            SELECT COUNT(*) as CompletedCount
+            FROM Delivery d
+            JOIN Orders o ON d.OrderID = o.OrderID
+            WHERE d.EmployeeID = %s AND o.Status = 'Completed'
+        """, (employee_id,))
+        completed_stats = cursor.fetchone()
+        
+    except Error as e:
+        flash(f'Error fetching delivery orders: {e}', 'error')
+        available_orders = []
+        my_deliveries = []
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('delivery/dashboard.html', orders=available_orders, my_deliveries=my_deliveries, completed_count=completed_stats.get('CompletedCount', 0) if completed_stats else 0)
+
+@app.route('/delivery/order/<int:order_id>')
+@login_required
+@role_required('delivery_staff')
+def delivery_order_details(order_id):
+    """View order details for delivery"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('delivery_dashboard'))
+    
+    cursor = conn.cursor(dictionary=True)
+    employee_id = session.get('user_id')
+    
+    try:
+        # Get order details
+        cursor.execute("""
+            SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address as CustomerAddress,
+                   d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
+                   d.EmployeeID as AssignedEmployeeID
+            FROM Orders o
+            LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Delivery d ON o.OrderID = d.OrderID
+            WHERE o.OrderID = %s
+        """, (order_id,))
+        order = cursor.fetchone()
+        
+        if not order:
+            flash('Order not found!', 'error')
+            return redirect(url_for('delivery_dashboard'))
+        
+        # Get order products
+        cursor.execute("""
+            SELECT op.*, p.ProductName, p.Dimensions, p.Color, p.Material
+            FROM Order_Product op
+            JOIN Products p ON op.ProductID = p.ProductID
+            WHERE op.OrderID = %s
+        """, (order_id,))
+        order_products = cursor.fetchall()
+        
+    except Error as e:
+        flash(f'Error fetching order details: {e}', 'error')
+        return redirect(url_for('delivery_dashboard'))
+    finally:
+        cursor.close()
+        conn.close()
+    
+    is_assigned = order.get('AssignedEmployeeID') == employee_id if order.get('AssignedEmployeeID') else False
+    return render_template('delivery/order_details.html', order=order, order_products=order_products, is_assigned=is_assigned)
+
+@app.route('/delivery/order/<int:order_id>/take', methods=['POST'])
+@login_required
+@role_required('delivery_staff')
+def delivery_take_order(order_id):
+    """Assign delivery staff to an order"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('delivery_dashboard'))
+    
+    cursor = conn.cursor(dictionary=True)
+    employee_id = session.get('user_id')
+    
+    try:
+        # Check order status - must be "Ready to Deliver"
+        cursor.execute("SELECT Status FROM Orders WHERE OrderID = %s", (order_id,))
+        order = cursor.fetchone()
+        
+        if not order:
+            flash('Order not found!', 'error')
+            return redirect(url_for('delivery_dashboard'))
+        
+        if order['Status'] != 'Ready to Deliver':
+            flash('Only orders with status "Ready to Deliver" can be assigned for delivery!', 'error')
+            return redirect(url_for('delivery_order_details', order_id=order_id))
+        
+        # Check if delivery record exists
+        cursor.execute("SELECT DeliveryID, EmployeeID FROM Delivery WHERE OrderID = %s", (order_id,))
+        delivery = cursor.fetchone()
+        
+        if delivery:
+            # Update existing delivery record (only if not already assigned to someone else)
+            if delivery['EmployeeID'] is None or delivery['EmployeeID'] == employee_id:
+                cursor.execute("""
+                    UPDATE Delivery 
+                    SET EmployeeID = %s
+                    WHERE OrderID = %s
+                """, (employee_id, order_id))
+                delivery_id = delivery['DeliveryID']
+            else:
+                flash('This order is already assigned to another delivery staff member!', 'error')
+                return redirect(url_for('delivery_order_details', order_id=order_id))
+        else:
+            # Create new delivery record - get customer address if available
+            cursor.execute("""
+                SELECT c.Address as CustomerAddress
+                FROM Orders o
+                LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+                WHERE o.OrderID = %s
+            """, (order_id,))
+            order_data = cursor.fetchone()
+            
+            delivery_address = order_data['CustomerAddress'] if order_data and order_data.get('CustomerAddress') else None
+            
+            cursor.execute("""
+                INSERT INTO Delivery (OrderID, EmployeeID, DeliveryAddress, ScheduledDate)
+                VALUES (%s, %s, %s, %s)
+            """, (order_id, employee_id, delivery_address, datetime.now().date()))
+            delivery_id = cursor.lastrowid
+        
+        # Also add to Delivery_Employee junction table
+        cursor.execute("""
+            INSERT INTO Delivery_Employee (DeliveryID, EmployeeID)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE DeliveryID = DeliveryID
+        """, (delivery_id, employee_id))
+        
+        # Update order status to "Scheduled for Delivery" when delivery staff takes it
+        cursor.execute("""
+            UPDATE Orders 
+            SET Status = 'Scheduled for Delivery'
+            WHERE OrderID = %s
+        """, (order_id,))
+        
+        conn.commit()
+        flash(f'You have been assigned to deliver Order #{order_id}! Order status updated to "Scheduled for Delivery".', 'success')
+        
+    except Error as e:
+        flash(f'Error taking order: {e}', 'error')
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('delivery_order_details', order_id=order_id))
+
+@app.route('/delivery/order/<int:order_id>/update', methods=['POST'])
+@login_required
+@role_required('delivery_staff')
+def delivery_update_order(order_id):
+    """Update delivery status and date"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('delivery_dashboard'))
+    
+    cursor = conn.cursor(dictionary=True)
+    employee_id = session.get('user_id')
+    
+    try:
+        delivery_status = request.form.get('delivery_status')
+        delivery_date = request.form.get('delivery_date')
+        scheduled_date = request.form.get('scheduled_date')
+        
+        # Validate delivery date if provided
+        # For "Delivered" status, only allow today or past dates (delivery cannot be in future)
+        # For "Scheduled for Delivery", date must be today or future
+        if delivery_date:
+            # First check basic date format
+            is_valid, error_msg = validate_date(delivery_date, 'Delivery date', allow_future=True)
+            if is_valid:
+                try:
+                    date_obj = datetime.strptime(delivery_date.strip(), '%Y-%m-%d').date()
+                    today = datetime.now().date()
+                    
+                    if delivery_status == 'Delivered':
+                        # For "Delivered", date cannot be in the future - only today or past
+                        if date_obj > today:
+                            is_valid = False
+                            error_msg = 'Delivery date cannot be in the future! Must be today or a past date.'
+                    elif delivery_status == 'Scheduled for Delivery':
+                        # For "Scheduled for Delivery", date must be today or future
+                        if date_obj < today:
+                            is_valid = False
+                            error_msg = 'Delivery date cannot be in the past! Must be today or a future date.'
+                except ValueError:
+                    pass  # Already handled by validate_date
+            
+            if not is_valid:
+                flash(error_msg, 'error')
+                return redirect(url_for('delivery_order_details', order_id=order_id))
+        
+        # Validate scheduled date - must be today or future
+        if scheduled_date:
+            is_valid, error_msg = validate_date(scheduled_date, 'Scheduled date', allow_future=True)
+            if not is_valid:
+                flash(error_msg, 'error')
+                return redirect(url_for('delivery_order_details', order_id=order_id))
+        
+        # Get delivery record
+        cursor.execute("SELECT DeliveryID, EmployeeID FROM Delivery WHERE OrderID = %s", (order_id,))
+        delivery = cursor.fetchone()
+        
+        if not delivery or delivery['EmployeeID'] != employee_id:
+            flash('You are not assigned to this delivery!', 'error')
+            return redirect(url_for('delivery_dashboard'))
+        
+        # Map delivery status to order status
+        # Delivery staff can only set delivery_status to "Scheduled for Delivery" or mark as delivered (Completed)
+        if delivery_status not in ['Scheduled for Delivery', 'Delivered']:
+            flash('Invalid delivery status! You can only set status to "Scheduled for Delivery" or "Delivered".', 'error')
+            return redirect(url_for('delivery_order_details', order_id=order_id))
+        
+        # Validate that dates are only set when appropriate status is selected
+        if scheduled_date and delivery_status != 'Scheduled for Delivery':
+            flash('Scheduled date can only be set when status is "Scheduled for Delivery"!', 'error')
+            return redirect(url_for('delivery_order_details', order_id=order_id))
+        
+        if delivery_date and delivery_status != 'Delivered':
+            flash('Delivery date can only be set when status is "Delivered"!', 'error')
+            return redirect(url_for('delivery_order_details', order_id=order_id))
+        
+        # Update delivery record (dates only, status is in Orders table)
+        update_query = "UPDATE Delivery SET"
+        params = []
+        
+        # Only set delivery_date if status is "Delivered"
+        if delivery_date and delivery_status == 'Delivered':
+            update_query += " DeliveryDate = %s"
+            params.append(delivery_date)
+        
+        # Only set scheduled_date if status is "Scheduled for Delivery"
+        if scheduled_date and delivery_status == 'Scheduled for Delivery':
+            if params:
+                update_query += ", ScheduledDate = %s"
+            else:
+                update_query += " ScheduledDate = %s"
+            params.append(scheduled_date)
+        
+        # Update order status based on delivery status
+        if delivery_status == 'Scheduled for Delivery':
+            # Change order status to "Scheduled for Delivery"
+            cursor.execute("UPDATE Orders SET Status = 'Scheduled for Delivery' WHERE OrderID = %s", (order_id,))
+        elif delivery_status == 'Delivered':
+            # Set delivery date to today if not provided
+            if not delivery_date:
+                if params:
+                    update_query += ", DeliveryDate = %s"
+                else:
+                    update_query += " DeliveryDate = %s"
+                params.append(datetime.now().date())
+            # Update order status to Completed
+            cursor.execute("UPDATE Orders SET Status = 'Completed' WHERE OrderID = %s", (order_id,))
+        
+        # Only update delivery table if there are date parameters
+        if params:
+            params.append(order_id)
+            update_query += " WHERE OrderID = %s"
+            cursor.execute(update_query, params)
+        conn.commit()
+        
+        status_messages = {
+            'Scheduled for Delivery': 'Order status updated to Scheduled for Delivery!',
+            'Delivered': 'Delivery completed! Order marked as completed and added to your deliveries.'
+        }
+        flash(status_messages.get(delivery_status, 'Delivery updated successfully!'), 'success')
+        
+    except Error as e:
+        flash(f'Error updating delivery: {e}', 'error')
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('delivery_order_details', order_id=order_id))
+
 if __name__ == '__main__':
     print("\n AMIN Furniture Store - Database Management System")
-    print(" Students: Malak Milhem, 1220031 - Layal Hajji, 1220871")
-    print(" Starting Flask application...")
+    print(" Students: Malak Milhem - Layal Hajji")
     print(" Access the application at: http://localhost:5000\n")
     app.run(debug=True, host='0.0.0.0', port=5000)
-
 

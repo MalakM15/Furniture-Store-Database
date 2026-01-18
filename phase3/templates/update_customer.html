@@ -27,13 +27,15 @@
         <form method="POST" action="{{ url_for('update_customer', customer_id=customer.CustomerID) }}">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group">
-                    <label class="form-label">First Name *</label>
-                    <input type="text" name="first_name" class="form-control" value="{{ customer.FirstName }}" required>
+                    <label class="form-label">First Name * <span id="first_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="first_name" id="first_name" class="form-control" value="{{ customer.FirstName }}" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Last Name *</label>
-                    <input type="text" name="last_name" class="form-control" value="{{ customer.LastName }}" required>
+                    <label class="form-label">Last Name * <span id="last_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="last_name" id="last_name" class="form-control" value="{{ customer.LastName }}" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
                 </div>
             </div>
             
@@ -43,8 +45,9 @@
             </div>
             
             <div class="form-group">
-                <label class="form-label">Phone Number</label>
-                <input type="text" name="phone_number" class="form-control" value="{{ customer.PhoneNumber or '' }}">
+                <label class="form-label">Phone Number <span id="phone_number_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="text" name="phone_number" id="phone_number" class="form-control" value="{{ customer.PhoneNumber or '' }}">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Numbers only</small>
             </div>
             
             <div class="form-group">
@@ -122,6 +125,88 @@
 {% block extra_js %}
 <script>
     lucide.createIcons();
+    
+    function validateName(name, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!name || !name.trim()) {
+            errorEl.textContent = 'This field is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+            errorEl.textContent = 'Must contain only letters and spaces';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validatePhone(phone, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!phone || !phone.trim()) {
+            errorEl.style.display = 'none';
+            return true; // Phone is optional
+        }
+        if (!/^\d+$/.test(phone.trim())) {
+            errorEl.textContent = 'Must contain only numbers';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    const firstNameInput = document.getElementById('first_name');
+    if (firstNameInput) {
+        firstNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'first_name');
+        });
+        firstNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'first_name');
+        });
+    }
+    
+    const lastNameInput = document.getElementById('last_name');
+    if (lastNameInput) {
+        lastNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'last_name');
+        });
+        lastNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'last_name');
+        });
+    }
+    
+    const phoneInput = document.getElementById('phone_number');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            validatePhone(e.target.value, 'phone_number');
+        });
+        phoneInput.addEventListener('blur', function(e) {
+            validatePhone(e.target.value, 'phone_number');
+        });
+    }
+    
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const firstName = document.getElementById('first_name').value;
+            const lastName = document.getElementById('last_name').value;
+            const phone = document.getElementById('phone_number').value;
+            
+            let isValid = validateName(firstName, 'first_name') &&
+                         validateName(lastName, 'last_name') &&
+                         validatePhone(phone, 'phone_number');
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please correct the errors in the form before submitting.');
+            }
+        });
+    }
 </script>
 {% endblock %}
 

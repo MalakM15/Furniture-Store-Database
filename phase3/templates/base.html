@@ -91,18 +91,15 @@
             width: 280px;
             background: var(--bg-secondary);
             border-right: 1px solid var(--border-color);
-            padding: 2rem 0;
             position: fixed;
             height: 100vh;
             overflow-y: auto;
             z-index: 100;
+            display: flex;
+            flex-direction: column;
         }
+        
 
-        .logo {
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
-        }
 
         .logo h1 {
             font-family: 'Cormorant Garamond', serif;
@@ -761,14 +758,24 @@
         .stock-dot.low { background: var(--danger); }
 
         /* Footer inside sidebar */
+        .sidebar-content {
+            flex: 1;
+            padding: 2rem 0 0 0;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        
+        .logo {
+            padding: 0 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+        
         .sidebar-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 1.5rem;
+            padding: 1.5rem 0;
             border-top: 1px solid var(--border-color);
             background: var(--bg-secondary);
+            flex-shrink: 0;
         }
 
         .sidebar-footer p {
@@ -784,12 +791,13 @@
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
-            <div class="logo">
-                <h1>AMIN</h1>
-                <p>Furniture Store</p>
-            </div>
-            
-            {% if session.get('role') == 'customer' %}
+            <div class="sidebar-content">
+                <div class="logo">
+                    <h1>AMIN</h1>
+                    <p>Furniture Store</p>
+                </div>
+                
+                {% if session.get('role') == 'customer' %}
             <!-- Customer Navigation -->
             <nav class="nav-section">
                 <p class="nav-section-title">Main Menu</p>
@@ -847,22 +855,33 @@
                     <i data-lucide="warehouse"></i>
                     <span>Inventory</span>
                 </a>
-                <a href="{{ url_for('employees') }}" class="nav-link {% if request.endpoint in ['employees', 'add_employee', 'update_employee'] %}active{% endif %}">
+                <a href="{{ url_for('employees') }}" class="nav-link {% if request.endpoint in ['employees', 'add_employee', 'update_employee', 'employee_details'] %}active{% endif %}">
                     <i data-lucide="user-cog"></i>
                     <span>Employees</span>
                 </a>
-                {% endif %}
-            </nav>
-            
-            {% if session.get('role') == 'manager' %}
-            <nav class="nav-section">
-                <p class="nav-section-title">Analytics</p>
                 <a href="{{ url_for('reports') }}" class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
                     <i data-lucide="bar-chart-3"></i>
                     <span>Reports</span>
                 </a>
+                {% endif %}
             </nav>
-            {% endif %}
+            
+            <nav class="nav-section">
+                <p class="nav-section-title">Account</p>
+                <a href="{{ url_for('employee_profile') }}" class="nav-link {% if request.endpoint == 'employee_profile' %}active{% endif %}">
+                    <i data-lucide="user"></i>
+                    <span>My Profile</span>
+                </a>
+            </nav>
+            {% elif session.get('role') == 'delivery_staff' %}
+            <!-- Delivery Staff Navigation -->
+            <nav class="nav-section">
+                <p class="nav-section-title">Main Menu</p>
+                <a href="{{ url_for('delivery_dashboard') }}" class="nav-link {% if request.endpoint in ['delivery_dashboard', 'delivery_order_details'] %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+            </nav>
             
             <nav class="nav-section">
                 <p class="nav-section-title">Account</p>
@@ -880,22 +899,27 @@
                 </a>
             </nav>
             {% endif %}
+            </div>
             
             <div class="sidebar-footer">
                 {% if session.get('user_name') %}
-                <div style="margin-bottom: 0.75rem;">
-                    <a href="{% if session.get('role') == 'customer' %}{{ url_for('customer_profile') }}{% else %}{{ url_for('employee_profile') }}{% endif %}" style="color: var(--accent-gold); text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                        <i data-lucide="user" style="width: 14px; height: 14px;"></i>
-                        {{ session.user_name }}
+                <div style="padding: 0 1.5rem 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <i data-lucide="user" style="width: 16px; height: 16px; color: var(--accent-gold);"></i>
+                        <div style="flex: 1;">
+                            <a href="{% if session.get('role') == 'customer' %}{{ url_for('customer_profile') }}{% elif session.get('role') in ['employee', 'manager', 'delivery_staff'] %}{{ url_for('employee_profile') }}{% endif %}" style="color: var(--accent-gold); text-decoration: none; font-weight: 500; font-size: 0.875rem; display: block;">
+                                {{ session.user_name }}
+                            </a>
+                            <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+                                {{ session.role|title }}
+                            </p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="nav-link" style="padding: 0.5rem 0.75rem; margin: 0; font-size: 0.8rem;">
+                        <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+                        <span>Logout</span>
                     </a>
                 </div>
-                <p style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                    {{ session.role|title }}
-                </p>
-                <a href="{{ url_for('logout') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="log-out" style="width: 12px; height: 12px;"></i>
-                    Logout
-                </a>
                 {% else %}
                 <p>AMIN Furniture Store<br>Database Management System<br>© 2025</p>
                 {% endif %}
@@ -920,8 +944,16 @@
     </div>
     
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
+        // Initialize Lucide icons after DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+        // Also call immediately in case DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', lucide.createIcons);
+        } else {
+            lucide.createIcons();
+        }
     </script>
     {% block extra_js %}{% endblock %}
 </body>

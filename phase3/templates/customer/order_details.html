@@ -87,16 +87,16 @@
         {% if delivery %}
         <div class="info-grid">
             <div class="info-item">
-                <span class="info-label">Status</span>
+                <span class="info-label">Delivery Status</span>
                 <span class="info-value">
-                    {% if delivery.Status == 'Delivered' %}
-                        <span class="badge badge-success">{{ delivery.Status }}</span>
-                    {% elif delivery.Status == 'Scheduled' %}
-                        <span class="badge badge-info">{{ delivery.Status }}</span>
-                    {% elif delivery.Status == 'Out for Delivery' %}
-                        <span class="badge badge-warning">{{ delivery.Status }}</span>
+                    {% if order.Status == 'Completed' %}
+                        <span class="badge badge-success">Delivered</span>
+                    {% elif order.Status == 'Scheduled for Delivery' %}
+                        <span class="badge badge-warning">Scheduled for Delivery</span>
+                    {% elif order.Status == 'Ready to Deliver' %}
+                        <span class="badge badge-info">Ready to Deliver</span>
                     {% else %}
-                        <span class="badge badge-danger">{{ delivery.Status }}</span>
+                        <span class="badge badge-info">Pending</span>
                     {% endif %}
                 </span>
             </div>

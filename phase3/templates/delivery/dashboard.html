@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Dashboard - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Delivery Dashboard</h1>
+        <p>Welcome, {{ session.user_name }} - Manage your deliveries</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid fade-in" style="animation-delay: 0.05s;">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="package"></i>
+        </div>
+        <div class="stat-value">{{ orders|length or 0 }}</div>
+        <div class="stat-label">Available Orders</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="truck"></i>
+        </div>
+        <div class="stat-value">{{ my_deliveries|length or 0 }}</div>
+        <div class="stat-label">My Active Deliveries</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i data-lucide="check-circle"></i>
+        </div>
+        <div class="stat-value">{{ completed_count or 0 }}</div>
+        <div class="stat-label">Completed Deliveries</div>
+    </div>
+</div>
+
+<!-- My Deliveries Section -->
+{% if my_deliveries %}
+<div class="card fade-in" style="animation-delay: 0.1s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="truck" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            My Assigned Deliveries
+        </h3>
+        <span style="color: var(--text-muted); font-size: 0.875rem;">
+            {{ my_deliveries|length }} delivery(s)
+        </span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Address</th>
+                    <th>Scheduled Date</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for delivery in my_deliveries %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ delivery.OrderID }}</td>
+                    <td>{{ delivery.FirstName }} {{ delivery.LastName }}</td>
+                    <td style="color: var(--text-muted); font-size: 0.875rem;">{{ delivery.DeliveryAddress[:50] }}{% if delivery.DeliveryAddress|length > 50 %}...{% endif %}</td>
+                    <td>{{ delivery.ScheduledDate.strftime('%b %d, %Y') if delivery.ScheduledDate else '—' }}</td>
+                    <td>
+                        {% if delivery.OrderStatus == 'Completed' %}
+                            <span class="badge badge-success">{{ delivery.OrderStatus }}</span>
+                        {% elif delivery.OrderStatus == 'Scheduled for Delivery' %}
+                            <span class="badge badge-warning">{{ delivery.OrderStatus }}</span>
+                        {% elif delivery.OrderStatus == 'Ready to Deliver' %}
+                            <span class="badge badge-info">{{ delivery.OrderStatus }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ delivery.OrderStatus }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(delivery.TotalAmount) }} ₪</td>
+                    <td>
+                        <a href="{{ url_for('delivery_order_details', order_id=delivery.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Available Orders Section -->
+{% if orders %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="package" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Available Orders for Delivery
+        </h3>
+        <span style="color: var(--text-muted); font-size: 0.875rem;">
+            {{ orders|length }} order(s) available
+        </span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Order Date</th>
+                    <th>Order Status</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</td>
+                    <td>{{ order.FirstName }} {{ order.LastName }}</td>
+                    <td>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else '—' }}</td>
+                    <td>
+                        {% if order.OrderStatus == 'Completed' %}
+                            <span class="badge badge-success">{{ order.OrderStatus }}</span>
+                        {% elif order.OrderStatus == 'Pending' %}
+                            <span class="badge badge-warning">{{ order.OrderStatus }}</span>
+                        {% elif order.OrderStatus == 'Processing' %}
+                            <span class="badge badge-info">{{ order.OrderStatus }}</span>
+                        {% elif order.OrderStatus == 'Ready to Deliver' %}
+                            <span class="badge badge-info">{{ order.OrderStatus }}</span>
+                        {% elif order.OrderStatus == 'Scheduled for Delivery' %}
+                            <span class="badge badge-warning">{{ order.OrderStatus }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ order.OrderStatus }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                    <td>
+                        <a href="{{ url_for('delivery_order_details', order_id=order.OrderID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="empty-state">
+        <i data-lucide="package"></i>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">No orders available</h3>
+        <p>There are currently no orders that need delivery.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}
+

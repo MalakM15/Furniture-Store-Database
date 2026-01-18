@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}Add Employee - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('employees') }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Employees
+        </a>
+        <h1>Add New Employee</h1>
+        <p>Register a new employee</p>
+    </div>
+</div>
+
+<div class="fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="user-plus" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Employee Information
+            </h3>
+        </div>
+        
+        <form method="POST" action="{{ url_for('add_employee') }}" id="employeeForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name * <span id="first_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="first_name" id="first_name" class="form-control" placeholder="John" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name * <span id="last_name_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                    <input type="text" name="last_name" id="last_name" class="form-control" placeholder="Doe" required>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Position * <span id="position_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="text" name="position" id="position" class="form-control" placeholder="Sales Associate, Manager, etc." required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Letters only</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Hire Date <span id="hire_date_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="date" name="hire_date" id="hire_date" class="form-control">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Format: YYYY-MM-DD, cannot be in future</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Salary (₪) <span id="salary_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="number" name="salary" id="salary" class="form-control" placeholder="2500.00" step="0.01" min="0">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Positive numbers only</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" placeholder="john.doe@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Phone Number <span id="phone_number_error" style="color: var(--danger); font-size: 0.75rem; display: none;"></span></label>
+                <input type="text" name="phone_number" id="phone_number" class="form-control" placeholder="0599123456">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Numbers only</small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="user-plus"></i>
+                    Add Employee
+                </button>
+                <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+        
+        <!-- Guidelines Section -->
+        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+            <h4 style="color: var(--text-primary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="info" style="width: 18px; height: 18px; color: var(--accent-gold);"></i>
+                Guidelines
+            </h4>
+            <div class="guidelines">
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="user"></i>
+                </div>
+                <div>
+                    <strong>Name & Position</strong>
+                    <p>Must contain only letters and spaces.</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="calendar"></i>
+                </div>
+                <div>
+                    <strong>Hire Date</strong>
+                    <p>Format: YYYY-MM-DD. Month must be 01-12. Cannot be in the future.</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="phone"></i>
+                </div>
+                <div>
+                    <strong>Phone Number</strong>
+                    <p>Must contain only numbers (e.g., 0599123456).</p>
+                </div>
+            </div>
+            
+            <div class="guideline-item">
+                <div class="guideline-icon">
+                    <i data-lucide="banknote"></i>
+                </div>
+                <div>
+                    <strong>Salary</strong>
+                    <p>Must be a positive number.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guidelines {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    
+    .guideline-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+    }
+    
+    .guideline-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(201, 169, 98, 0.1);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .guideline-icon i {
+        width: 20px;
+        height: 20px;
+        color: var(--accent-gold);
+    }
+    
+    .guideline-item strong {
+        display: block;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .guideline-item p {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+    
+    // Validation functions
+    function validateName(name, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!name || !name.trim()) {
+            errorEl.textContent = 'This field is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
+            errorEl.textContent = 'Must contain only letters and spaces';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validatePosition(position, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!position || !position.trim()) {
+            errorEl.textContent = 'Position is required';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        if (!/^[a-zA-Z\s]+$/.test(position.trim())) {
+            errorEl.textContent = 'Must contain only letters and spaces';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateDate(dateStr, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!dateStr || !dateStr.trim()) {
+            errorEl.style.display = 'none';
+            return true; // Date is optional
+        }
+        
+        const date = new Date(dateStr);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
+        
+        if (isNaN(date.getTime())) {
+            errorEl.textContent = 'Invalid date format';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        const month = date.getMonth() + 1; // JavaScript months are 0-11
+        if (month < 1 || month > 12) {
+            errorEl.textContent = 'Month must be between 01 and 12';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        if (date > today) {
+            errorEl.textContent = 'Cannot be in the future';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validateSalary(salary, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!salary || !salary.trim()) {
+            errorEl.style.display = 'none';
+            return true; // Salary is optional
+        }
+        const numSalary = parseFloat(salary);
+        if (isNaN(numSalary) || numSalary < 0) {
+            errorEl.textContent = 'Must be a positive number';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    function validatePhone(phone, fieldId) {
+        const errorEl = document.getElementById(fieldId + '_error');
+        if (!phone || !phone.trim()) {
+            errorEl.style.display = 'none';
+            return true; // Phone is optional
+        }
+        if (!/^\d+$/.test(phone.trim())) {
+            errorEl.textContent = 'Must contain only numbers';
+            errorEl.style.display = 'block';
+            return false;
+        }
+        errorEl.style.display = 'none';
+        return true;
+    }
+    
+    // First name validation
+    const firstNameInput = document.getElementById('first_name');
+    if (firstNameInput) {
+        firstNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'first_name');
+        });
+        firstNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'first_name');
+        });
+    }
+    
+    // Last name validation
+    const lastNameInput = document.getElementById('last_name');
+    if (lastNameInput) {
+        lastNameInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validateName(e.target.value, 'last_name');
+        });
+        lastNameInput.addEventListener('blur', function(e) {
+            validateName(e.target.value, 'last_name');
+        });
+    }
+    
+    // Position validation
+    const positionInput = document.getElementById('position');
+    if (positionInput) {
+        positionInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+            validatePosition(e.target.value, 'position');
+        });
+        positionInput.addEventListener('blur', function(e) {
+            validatePosition(e.target.value, 'position');
+        });
+    }
+    
+    // Hire date validation
+    const hireDateInput = document.getElementById('hire_date');
+    if (hireDateInput) {
+        hireDateInput.addEventListener('change', function(e) {
+            validateDate(e.target.value, 'hire_date');
+        });
+        hireDateInput.addEventListener('blur', function(e) {
+            validateDate(e.target.value, 'hire_date');
+        });
+    }
+    
+    // Salary validation
+    const salaryInput = document.getElementById('salary');
+    if (salaryInput) {
+        salaryInput.addEventListener('input', function(e) {
+            if (e.target.value && parseFloat(e.target.value) < 0) {
+                e.target.value = '';
+            }
+            validateSalary(e.target.value, 'salary');
+        });
+        salaryInput.addEventListener('blur', function(e) {
+            validateSalary(e.target.value, 'salary');
+        });
+    }
+    
+    // Phone number validation
+    const phoneInput = document.getElementById('phone_number');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            validatePhone(e.target.value, 'phone_number');
+        });
+        phoneInput.addEventListener('blur', function(e) {
+            validatePhone(e.target.value, 'phone_number');
+        });
+    }
+    
+    // Form submission validation
+    const form = document.getElementById('employeeForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const firstName = document.getElementById('first_name').value;
+            const lastName = document.getElementById('last_name').value;
+            const position = document.getElementById('position').value;
+            const hireDate = document.getElementById('hire_date').value;
+            const salary = document.getElementById('salary').value;
+            const phone = document.getElementById('phone_number').value;
+            
+            let isValid = validateName(firstName, 'first_name') &&
+                         validateName(lastName, 'last_name') &&
+                         validatePosition(position, 'position') &&
+                         validateDate(hireDate, 'hire_date') &&
+                         validateSalary(salary, 'salary') &&
+                         validatePhone(phone, 'phone_number');
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please correct the errors in the form before submitting.');
+            }
+        });
+    }
+</script>
+{% endblock %}
+
