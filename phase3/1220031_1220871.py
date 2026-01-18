@@ -146,7 +146,7 @@ def role_required(*roles):
                 return redirect(url_for('login'))
             if session.get('role') not in roles:
                 flash('You do not have permission to access this page.', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('index'))
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -155,21 +155,49 @@ def role_required(*roles):
 def utility_processor():
     def get_product_image(category, product_id, product_name=''):
         """Get a product image based on product name keywords, then category"""
-        product_name_lower = product_name.lower() if product_name else ''
+        product_name_lower = ' '.join(product_name.lower().split()) if product_name else ''
+        images_dir = os.path.join(app.root_path, 'images', 'products')
+        
+        def resolve_image_filename(base_name):
+            if not base_name:
+                return None
+            candidates = [base_name]
+            if '.' in base_name:
+                stem = base_name.rsplit('.', 1)[0]
+                candidates.extend([stem, f"{stem}.png", f"{stem}.jpg", f"{stem}.jpeg"])
+            else:
+                candidates.extend([f"{base_name}.png", f"{base_name}.jpg", f"{base_name}.jpeg"])
+            for candidate in candidates:
+                if os.path.exists(os.path.join(images_dir, candidate)):
+                    return candidate
+            try:
+                files = os.listdir(images_dir)
+            except OSError:
+                files = []
+            lower_map = {f.lower(): f for f in files}
+            for candidate in candidates:
+                match = lower_map.get(candidate.lower())
+                if match:
+                    return match
+            return None
         
         local_image_map = {
             'amin furniture': 'Amin Furniture.png',
             'bed': 'bed.png',
             'bedroom': 'bedroom.png',
+            'bedroom set': 'bedroom.png',
             'single bed': 'single bed.png',
             'nightstand': 'nightstand.png',
+            'wardrobe': 'wardrobe white.png',
             'wardrobe brown': 'wardrobe brown.png',
             'wardrobe white': 'wardrobe white.png',
             'leather sofa': 'Leather Sofa.png',
             'sofa': 'sofa.png',
             'tv stand': 'TV stand.png',
+            'coffee table': 'coffe table.png',
             'coffe table': 'coffe table.png',
             'dining table': 'dining table.png',
+            'dining chairs': 'Chairs.png',
             'chairs': 'Chairs.png',
             'office desk': 'Office Desk.png',
             'drawer': 'drawer.png',
@@ -191,21 +219,18 @@ def utility_processor():
         }
         
         if product_name_lower in local_image_map:
-            filename = local_image_map[product_name_lower]
-            local_path = os.path.join(app.root_path, 'images', 'products', filename)
-            if os.path.exists(local_path):
+            filename = resolve_image_filename(local_image_map[product_name_lower])
+            if filename:
                 return url_for('product_image', filename=filename)
         
         category_key = (category or '').strip().lower()
         if category_key in category_fallback:
-            filename = category_fallback[category_key]
-            local_path = os.path.join(app.root_path, 'images', 'products', filename)
-            if os.path.exists(local_path):
+            filename = resolve_image_filename(category_fallback[category_key])
+            if filename:
                 return url_for('product_image', filename=filename)
         
-        default_local = local_image_map['amin furniture']
-        default_path = os.path.join(app.root_path, 'images', 'products', default_local)
-        if os.path.exists(default_path):
+        default_local = resolve_image_filename(local_image_map['amin furniture'])
+        if default_local:
             return url_for('product_image', filename=default_local)
         
         # No remote image fallback; use local files only
