@@ -369,21 +369,32 @@ def customer_dashboard():
     
     try:
         cursor.execute("""
-            SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status
+            SELECT o.OrderID, o.OrderDate, o.Status,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
             FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.CustomerID = %s
+            GROUP BY o.OrderID, o.OrderDate, o.Status
             ORDER BY o.OrderDate DESC
             LIMIT 10
         """, (customer_id,))
         orders = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for order in orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
         
         cursor.execute("""
             SELECT COUNT(*) as total_orders,
-                   SUM(CASE WHEN Status = 'Completed' THEN TotalAmount ELSE 0 END) as total_spent
-            FROM Orders
-            WHERE CustomerID = %s
+                   SUM(CASE WHEN o.Status = 'Completed' THEN op.Quantity * op.PricePerUnit ELSE 0 END) as total_spent
+            FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.CustomerID = %s
         """, (customer_id,))
         stats = cursor.fetchone()
+        # Handle NULL total_spent
+        if stats and stats.get('total_spent') is None:
+            stats['total_spent'] = 0
         
     except Error as e:
         flash(f'Error fetching data: {e}', 'error')
@@ -644,9 +655,9 @@ def customer_checkout():
             
             # Create order
             cursor.execute("""
-                INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, Status)
-                VALUES (%s, %s, %s, 'Pending')
-            """, (customer_id, datetime.now().date(), total_amount))
+                INSERT INTO Orders (CustomerID, OrderDate, Status)
+                VALUES (%s, %s, 'Pending')
+            """, (customer_id, datetime.now().date()))
             
             order_id = cursor.lastrowid
             
@@ -663,7 +674,7 @@ def customer_checkout():
                     WHERE ProductID = %s
                 """, (item['quantity'], item['product_id']))
             
-            # Create payment record (AmountPaid = TotalAmount)
+            # Create payment record
             cursor.execute("""
                 INSERT INTO Payments (OrderID, PaymentDate, AmountPaid, PaymentMethod)
                 VALUES (%s, %s, %s, %s)
@@ -732,17 +743,26 @@ def customer_order_details(order_id):
         # Verify order belongs to this customer
         cursor.execute("""
             SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
-                   e.FirstName as EmpFirstName, e.LastName as EmpLastName
+                   e.FirstName as EmpFirstName, e.LastName as EmpLastName,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
             FROM Orders o
             JOIN Customers c ON o.CustomerID = c.CustomerID
             LEFT JOIN Employees e ON o.EmployeeID = e.EmployeeID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.OrderID = %s AND o.CustomerID = %s
+            GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
+                     c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
+                     e.FirstName, e.LastName
         """, (order_id, customer_id))
         order = cursor.fetchone()
         
         if not order:
             flash('Order not found or you do not have permission to view it!', 'error')
             return redirect(url_for('customer_dashboard'))
+        
+        # Handle NULL TotalAmount
+        if order.get('TotalAmount') is None:
+            order['TotalAmount'] = 0
         
         cursor.execute("""
             SELECT op.*, p.ProductName, p.Material, p.Color
@@ -871,21 +891,25 @@ def customer_profile():
         # Get order statistics
         cursor.execute("""
             SELECT 
-                COUNT(*) as total_orders,
-                SUM(CASE WHEN Status = 'Completed' THEN TotalAmount ELSE 0 END) as total_spent,
-                COUNT(CASE WHEN Status = 'Pending' THEN 1 END) as pending_orders,
-                COUNT(CASE WHEN Status = 'Completed' THEN 1 END) as completed_orders
-            FROM Orders
-            WHERE CustomerID = %s
+                COUNT(DISTINCT o.OrderID) as total_orders,
+                SUM(CASE WHEN o.Status = 'Completed' THEN op.Quantity * op.PricePerUnit ELSE 0 END) as total_spent,
+                COUNT(DISTINCT CASE WHEN o.Status = 'Pending' THEN o.OrderID END) as pending_orders,
+                COUNT(DISTINCT CASE WHEN o.Status = 'Completed' THEN o.OrderID END) as completed_orders
+            FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.CustomerID = %s
         """, (customer_id,))
         stats = cursor.fetchone()
         
         # Get recent orders
         cursor.execute("""
-            SELECT OrderID, OrderDate, TotalAmount, Status
-            FROM Orders
-            WHERE CustomerID = %s
-            ORDER BY OrderDate DESC
+            SELECT o.OrderID, o.OrderDate, o.Status,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
+            FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.CustomerID = %s
+            GROUP BY o.OrderID, o.OrderDate, o.Status
+            ORDER BY o.OrderDate DESC
             LIMIT 5
         """, (customer_id,))
         recent_orders = cursor.fetchall()
@@ -925,26 +949,37 @@ def employee_profile():
         # Get order statistics
         cursor.execute("""
             SELECT 
-                COUNT(*) as total_orders_handled,
-                SUM(TotalAmount) as total_sales,
-                COUNT(CASE WHEN Status = 'Pending' THEN 1 END) as pending_orders,
-                COUNT(CASE WHEN Status = 'Completed' THEN 1 END) as completed_orders
-            FROM Orders
-            WHERE EmployeeID = %s
+                COUNT(DISTINCT o.OrderID) as total_orders_handled,
+                SUM(op.Quantity * op.PricePerUnit) as total_sales,
+                COUNT(DISTINCT CASE WHEN o.Status = 'Pending' THEN o.OrderID END) as pending_orders,
+                COUNT(DISTINCT CASE WHEN o.Status = 'Completed' THEN o.OrderID END) as completed_orders
+            FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.EmployeeID = %s
         """, (employee_id,))
         stats = cursor.fetchone()
+        # Handle NULL total_sales
+        if stats and stats.get('total_sales') is None:
+            stats['total_sales'] = 0
         
         # Get recent orders handled
         cursor.execute("""
-            SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status,
+            SELECT o.OrderID, o.OrderDate, o.Status,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
                    c.FirstName, c.LastName
             FROM Orders o
             JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.EmployeeID = %s
+            GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
             ORDER BY o.OrderDate DESC
             LIMIT 5
         """, (employee_id,))
         recent_orders = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for order in recent_orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
         
     except Error as e:
         flash(f'Error fetching profile: {e}', 'error')
@@ -985,14 +1020,22 @@ def employee_dashboard():
         stats['total_orders'] = cursor.fetchone()['count']
         
         cursor.execute("""
-            SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status,
+            SELECT o.OrderID, o.OrderDate, o.Status,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
                    c.FirstName, c.LastName
             FROM Orders o
             JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
             ORDER BY o.OrderDate DESC
             LIMIT 5
         """)
-        stats['recent_orders'] = cursor.fetchall()
+        recent_orders = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for order in recent_orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
+        stats['recent_orders'] = recent_orders
         
     except Error as e:
         flash(f'Error fetching statistics: {e}', 'error')
@@ -1237,13 +1280,16 @@ def orders():
     
     try:
         query = """
-            SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status,
+            SELECT o.OrderID, o.OrderDate, o.Status,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
                    c.FirstName, c.LastName, c.PhoneNumber, c.Email,
                    e.FirstName as EmpFirstName, e.LastName as EmpLastName
             FROM Orders o
             JOIN Customers c ON o.CustomerID = c.CustomerID
             LEFT JOIN Employees e ON o.EmployeeID = e.EmployeeID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE 1=1
+            GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName, c.PhoneNumber, c.Email, e.FirstName, e.LastName
         """
         params = []
         
@@ -1260,6 +1306,10 @@ def orders():
         
         cursor.execute(query, params)
         orders = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for order in orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
         
     except Error as e:
         flash(f'Error fetching orders: {e}', 'error')
@@ -1283,17 +1333,25 @@ def order_details(order_id):
     try:
         cursor.execute("""
             SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
-                   e.FirstName as EmpFirstName, e.LastName as EmpLastName
+                   e.FirstName as EmpFirstName, e.LastName as EmpLastName,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
             FROM Orders o
             JOIN Customers c ON o.CustomerID = c.CustomerID
             LEFT JOIN Employees e ON o.EmployeeID = e.EmployeeID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.OrderID = %s
+            GROUP BY o.OrderID, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
+                     e.FirstName, e.LastName, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status
         """, (order_id,))
         order = cursor.fetchone()
         
         if not order:
             flash('Order not found!', 'error')
             return redirect(url_for('orders'))
+        
+        # Handle NULL TotalAmount
+        if order.get('TotalAmount') is None:
+            order['TotalAmount'] = 0
         
         cursor.execute("""
             SELECT op.*, p.ProductName, p.Material, p.Color
@@ -1423,7 +1481,7 @@ def update_order(order_id):
         status = request.form.get('status', '').strip()
         
         # Validate required fields
-        if not customer_id or not order_date or not total_amount or not status:
+        if not customer_id or not order_date or not status:
             flash('Please fill in all required fields!', 'error')
             return redirect(url_for('update_order', order_id=order_id))
         
@@ -1433,24 +1491,13 @@ def update_order(order_id):
             flash(error_msg, 'error')
             return redirect(url_for('update_order', order_id=order_id))
         
-        # Validate total amount (positive number)
         try:
-            amount = float(total_amount)
-            if amount <= 0:
-                flash('Total amount must be a positive number!', 'error')
-                return redirect(url_for('update_order', order_id=order_id))
-        except ValueError:
-            flash('Total amount must be a valid number!', 'error')
-            return redirect(url_for('update_order', order_id=order_id))
-        
-        try:
-            # Update order
+            # Update order (TotalAmount is calculated from Order_Product)
             cursor.execute("""
                 UPDATE Orders 
-                SET CustomerID = %s, EmployeeID = %s, OrderDate = %s, 
-                    TotalAmount = %s, Status = %s
+                SET CustomerID = %s, EmployeeID = %s, OrderDate = %s, Status = %s
                 WHERE OrderID = %s
-            """, (customer_id, employee_id, order_date, amount, status, order_id))
+            """, (customer_id, employee_id, order_date, status, order_id))
             
             conn.commit()
             flash('Order updated successfully!', 'success')
@@ -1467,13 +1514,21 @@ def update_order(order_id):
     # GET request - show update form
     try:
         cursor.execute("""
-            SELECT * FROM Orders WHERE OrderID = %s
+            SELECT o.*, SUM(op.Quantity * op.PricePerUnit) as TotalAmount
+            FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.OrderID = %s
+            GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status
         """, (order_id,))
         order = cursor.fetchone()
         
         if not order:
             flash('Order not found!', 'error')
             return redirect(url_for('orders'))
+        
+        # Handle NULL TotalAmount
+        if order.get('TotalAmount') is None:
+            order['TotalAmount'] = 0
         
         # Get customers and employees for dropdowns
         cursor.execute("SELECT CustomerID, FirstName, LastName FROM Customers ORDER BY FirstName, LastName")
@@ -1571,27 +1626,39 @@ def reports():
         reports['sales_by_category'] = cursor.fetchall()
         
         cursor.execute("""
-            SELECT e.FirstName, e.LastName, COUNT(o.OrderID) as OrderCount,
-                   SUM(o.TotalAmount) as TotalSales
+            SELECT e.FirstName, e.LastName, COUNT(DISTINCT o.OrderID) as OrderCount,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
             FROM Employees e
             LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE e.Position = 'Sales Associate'
             GROUP BY e.EmployeeID, e.FirstName, e.LastName
             ORDER BY TotalSales DESC
         """)
-        reports['employee_performance'] = cursor.fetchall()
+        employee_perf = cursor.fetchall()
+        # Handle NULL TotalSales
+        for emp in employee_perf:
+            if emp.get('TotalSales') is None:
+                emp['TotalSales'] = 0
+        reports['employee_performance'] = employee_perf
         
         cursor.execute("""
-            SELECT DATE_FORMAT(OrderDate, '%Y-%m') as Month,
-                   COUNT(*) as OrderCount,
-                   SUM(TotalAmount) as TotalSales
-            FROM Orders
-            WHERE Status = 'Completed'
-            GROUP BY DATE_FORMAT(OrderDate, '%Y-%m')
+            SELECT DATE_FORMAT(o.OrderDate, '%Y-%m') as Month,
+                   COUNT(DISTINCT o.OrderID) as OrderCount,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
+            FROM Orders o
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.Status = 'Completed'
+            GROUP BY DATE_FORMAT(o.OrderDate, '%Y-%m')
             ORDER BY Month DESC
             LIMIT 6
         """)
-        reports['monthly_sales'] = cursor.fetchall()
+        monthly_sales = cursor.fetchall()
+        # Handle NULL TotalSales
+        for month in monthly_sales:
+            if month.get('TotalSales') is None:
+                month['TotalSales'] = 0
+        reports['monthly_sales'] = monthly_sales
         
     except Error as e:
         flash(f'Error generating reports: {e}', 'error')
@@ -2051,10 +2118,11 @@ def employees():
     try:
         query = """
             SELECT e.*, 
-                   COUNT(o.OrderID) as OrderCount,
-                   COALESCE(SUM(o.TotalAmount), 0) as TotalSales
+                   COUNT(DISTINCT o.OrderID) as OrderCount,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
             FROM Employees e
             LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE 1=1
         """
         params = []
@@ -2063,10 +2131,14 @@ def employees():
             query += " AND (e.FirstName LIKE %s OR e.LastName LIKE %s OR e.Email LIKE %s OR e.Position LIKE %s OR e.PhoneNumber LIKE %s)"
             params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%',f'%{search}%'])
         
-        query += " GROUP BY e.EmployeeID ORDER BY e.FirstName, e.LastName"
+        query += " GROUP BY e.EmployeeID, e.FirstName, e.LastName, e.Position, e.HireDate, e.Salary, e.PhoneNumber, e.Email ORDER BY e.FirstName, e.LastName"
         
         cursor.execute(query, params)
         employees = cursor.fetchall()
+        # Handle NULL TotalSales
+        for emp in employees:
+            if emp.get('TotalSales') is None:
+                emp['TotalSales'] = 0
         
     except Error as e:
         flash(f'Error fetching employees: {e}', 'error')
@@ -2093,12 +2165,13 @@ def employee_details(employee_id):
         # Get employee information with statistics
         cursor.execute("""
             SELECT e.*, 
-                   COUNT(o.OrderID) as OrderCount,
-                   COALESCE(SUM(o.TotalAmount), 0) as TotalSales
+                   COUNT(DISTINCT o.OrderID) as OrderCount,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
             FROM Employees e
             LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE e.EmployeeID = %s
-            GROUP BY e.EmployeeID
+            GROUP BY e.EmployeeID, e.FirstName, e.LastName, e.Position, e.HireDate, e.Salary, e.PhoneNumber, e.Email
         """, (employee_id,))
         employee = cursor.fetchone()
         
@@ -2106,16 +2179,28 @@ def employee_details(employee_id):
             flash('Employee not found!', 'error')
             return redirect(url_for('employees'))
         
+        # Handle NULL TotalSales
+        if employee.get('TotalSales') is None:
+            employee['TotalSales'] = 0
+        
         # Get orders handled by this employee
         cursor.execute("""
-            SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber
+            SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
             FROM Orders o
             LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.EmployeeID = %s
+            GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
+                     c.FirstName, c.LastName, c.Email, c.PhoneNumber
             ORDER BY o.OrderDate DESC
             LIMIT 10
         """, (employee_id,))
         orders = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for order in orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
         
     except Error as e:
         flash(f'Error fetching employee details: {e}', 'error')
@@ -2408,9 +2493,9 @@ def create_order():
             
             # Create the order
             cursor.execute("""
-                INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, TotalAmount, Status)
-                VALUES (%s, %s, %s, %s, 'Pending')
-            """, (customer_id, employee_id, order_date, total_amount))
+                INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, Status)
+                VALUES (%s, %s, %s, 'Pending')
+            """, (customer_id, employee_id, order_date))
             
             order_id = cursor.lastrowid
             
@@ -2489,31 +2574,47 @@ def delivery_dashboard():
     employee_id = session.get('user_id')
     
     try:
-        # Get orders that are ready to deliver (only status "Ready to Deliver")
+        # Get orders that are ready to deliver
         cursor.execute("""
-            SELECT DISTINCT o.OrderID, o.OrderDate, o.TotalAmount, o.Status as OrderStatus,
+            SELECT DISTINCT o.OrderID, o.OrderDate, o.Status as OrderStatus,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
                    c.FirstName, c.LastName, c.PhoneNumber, c.Email,
                    d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
                    d.EmployeeID as AssignedEmployeeID
             FROM Orders o
             LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
             LEFT JOIN Delivery d ON o.OrderID = d.OrderID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.Status = 'Ready to Deliver'
+            GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName, c.PhoneNumber, c.Email,
+                     d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, d.EmployeeID
             ORDER BY o.OrderDate DESC
         """)
         available_orders = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for order in available_orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
         
         # Get my assigned deliveries (orders I'm delivering - status Scheduled for Delivery or Ready to Deliver)
         cursor.execute("""
-            SELECT d.*, o.OrderDate, o.TotalAmount, o.Status as OrderStatus,
+            SELECT d.*, o.OrderDate, o.Status as OrderStatus,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
                    c.FirstName, c.LastName, c.PhoneNumber, c.Email
             FROM Delivery d
             JOIN Orders o ON d.OrderID = o.OrderID
             LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE d.EmployeeID = %s AND o.Status IN ('Ready to Deliver', 'Scheduled for Delivery')
+            GROUP BY d.DeliveryID, o.OrderDate, o.Status, c.FirstName, c.LastName, c.PhoneNumber, c.Email,
+                     d.OrderID, d.EmployeeID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate
             ORDER BY d.ScheduledDate DESC
         """, (employee_id,))
         my_deliveries = cursor.fetchall()
+        # Handle NULL TotalAmount
+        for delivery in my_deliveries:
+            if delivery.get('TotalAmount') is None:
+                delivery['TotalAmount'] = 0
         
         # Get my completed deliveries (for statistics)
         cursor.execute("""
@@ -2552,17 +2653,26 @@ def delivery_order_details(order_id):
         cursor.execute("""
             SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address as CustomerAddress,
                    d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
-                   d.EmployeeID as AssignedEmployeeID
+                   d.EmployeeID as AssignedEmployeeID,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
             FROM Orders o
             LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
             LEFT JOIN Delivery d ON o.OrderID = d.OrderID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.OrderID = %s
+            GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
+                     c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
+                     d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, d.EmployeeID
         """, (order_id,))
         order = cursor.fetchone()
         
         if not order:
             flash('Order not found!', 'error')
             return redirect(url_for('delivery_dashboard'))
+        
+        # Handle NULL TotalAmount
+        if order.get('TotalAmount') is None:
+            order['TotalAmount'] = 0
         
         # Get order products
         cursor.execute("""
@@ -2804,9 +2914,3 @@ if __name__ == '__main__':
     print(" Students: Malak Milhem - Layal Hajji")
     print(" Access the application at: http://localhost:5000\n")
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-<<<<<<< HEAD
-=======
-
-
->>>>>>> fac2efc6de32a6586282f1ddd716b37621d48d9f

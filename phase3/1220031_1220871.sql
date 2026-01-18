@@ -66,7 +66,6 @@ CREATE TABLE Orders (
     CustomerID INT,
     EmployeeID INT,
     OrderDate DATE NOT NULL,
-    TotalAmount DECIMAL(10, 2) NOT NULL, 
     Status VARCHAR(50) DEFAULT 'Pending',
     FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID) ON DELETE SET NULL,
     FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID) ON DELETE SET NULL
@@ -185,19 +184,19 @@ INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, Registr
 ('Dina', 'Omar', 'dina.omar@email.com', '0599888999', 'Ramallah, Al-Masyoun', '2023-04-15');
 
 
-INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, TotalAmount, Status) VALUES
-(1, 2, '2025-06-10', 1500.00, 'Completed'),
-(2, 2, '2025-06-15', 3500.00, 'Completed'),
-(3, 3, '2025-06-20', 5000.00, 'Completed'),
-(4, 2, '2025-07-01', 2500.00, 'Completed'),
-(5, 3, '2025-07-05', 1200.00, 'Completed'),
-(6, 2, '2025-07-10', 8000.00, 'Completed'),
-(7, 3, '2025-07-15', 1500.00, 'Completed'),
-(8, 2, '2025-11-20', 3000.00, 'Ready to Deliver'),
-(1, 3, '2025-11-25', 1200.00, 'Processing'),
-(2, 2, '2025-11-01', 1800.00, 'Pending'),
-(3, 2, '2025-11-28', 2000.00, 'Scheduled for Delivery'),
-(4, 3, '2025-11-30', 1500.00, 'Ready to Deliver');
+INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, Status) VALUES
+(1, 2, '2025-06-10', 'Completed'),
+(2, 2, '2025-06-15', 'Completed'),
+(3, 3, '2025-06-20', 'Completed'),
+(4, 2, '2025-07-01', 'Completed'),
+(5, 3, '2025-07-05', 'Completed'),
+(6, 2, '2025-07-10', 'Completed'),
+(7, 3, '2025-07-15', 'Completed'),
+(8, 2, '2025-11-20', 'Ready to Deliver'),
+(1, 3, '2025-11-25', 'Processing'),
+(2, 2, '2025-11-01', 'Pending'),
+(3, 2, '2025-11-28', 'Scheduled for Delivery'),
+(4, 3, '2025-11-30', 'Ready to Deliver');
 
 
 INSERT INTO Order_Product (OrderID, ProductID, Quantity, PricePerUnit) VALUES
@@ -284,10 +283,6 @@ INSERT INTO Delivery_Employee (DeliveryID, EmployeeID) VALUES
 (6, 4),
 (6, 5),
 (7, 5),
-<<<<<<< HEAD
-(11, 5);
-=======
 (8, 4),
 (9, 5),
 (10, 4);
->>>>>>> fac2efc6de32a6586282f1ddd716b37621d48d9f
