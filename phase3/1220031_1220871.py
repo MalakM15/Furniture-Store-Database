@@ -5,7 +5,7 @@ Student:Malak Milhem, ID: 1220031
 
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
@@ -15,6 +15,10 @@ from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = 'amin_furniture_secret_key_2025'
+
+@app.route('/images/products/<path:filename>')
+def product_image(filename):
+    return send_from_directory(os.path.join(app.root_path, 'images', 'products'), filename)
 
 # ==================== VALIDATION HELPERS ====================
 
@@ -147,101 +151,65 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
-# Product images mapping by product type keywords
-PRODUCT_TYPE_IMAGES = {
-    # Beds
-    'bed': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=300&fit=crop',
-    'king size bed': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=300&fit=crop',
-    'queen size bed': 'https://images.unsplash.com/photo-1588046130717-0eb0c9a3ba15?w=400&h=300&fit=crop',
-    'single bed': 'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=400&h=300&fit=crop',
-    
-    # Bedroom furniture
-    'wardrobe': 'https://images.unsplash.com/photo-1558997519-83ea9252edf8?w=400&h=300&fit=crop',
-    'nightstand': 'https://images.unsplash.com/photo-1532372320572-cda25653a26d?w=400&h=300&fit=crop',
-    
-    # Sofas & Living Room
-    'sofa': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
-    'leather sofa': 'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=400&h=300&fit=crop',
-    'coffee table': 'https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=400&h=300&fit=crop',
-    'tv stand': 'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?w=400&h=300&fit=crop',
-    'tv': 'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?w=400&h=300&fit=crop',
-    'entertainment': 'https://images.pexels.com/photos/1571453/pexels-photo-1571453.jpeg?w=400&h=300&fit=crop',
-    
-    # Office
-    'office desk': 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=400&h=300&fit=crop',
-    'desk': 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=400&h=300&fit=crop',
-    'office chair': 'https://images.unsplash.com/photo-1580480055273-228ff5388ef8?w=400&h=300&fit=crop',
-    'ergonomic': 'https://images.unsplash.com/photo-1580480055273-228ff5388ef8?w=400&h=300&fit=crop',
-    'drawers': 'https://images.pexels.com/photos/3756959/pexels-photo-3756959.jpeg?w=400&h=300&fit=crop',
-    
-    # Dining
-    'dining table': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=400&h=300&fit=crop',
-    'dining chair': 'https://images.unsplash.com/photo-1549497538-303791108f95?w=400&h=300&fit=crop',
-    'dining set': 'https://images.unsplash.com/photo-1549497538-303791108f95?w=400&h=300&fit=crop',
-    
-    # Kitchen
-    'kitchen island': 'https://images.pexels.com/photos/1080721/pexels-photo-1080721.jpeg?w=400&h=300&fit=crop',
-    'kitchen cabinet': 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?w=400&h=300&fit=crop',
-    'kitchen cabinet set': 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?w=400&h=300&fit=crop',
-    'cabinet set': 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?w=400&h=300&fit=crop',
-}
-
-# Fallback images by category
-CATEGORY_IMAGES = {
-    'Bedroom': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=300&fit=crop',
-    'Living Room': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
-    'Office': 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=400&h=300&fit=crop',
-    'Dining Room': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=400&h=300&fit=crop',
-    'Kitchen': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
-    'default': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
-}
-
 @app.context_processor
 def utility_processor():
     def get_product_image(category, product_id, product_name=''):
         """Get a product image based on product name keywords, then category"""
         product_name_lower = product_name.lower() if product_name else ''
         
-        # Exact product name mappings using provided image URLs
-        # Note: For Unsplash photos, using the photo ID in image format
-        # For iStock photos, using the direct media URL provided
-        exact_mappings = {
-            # TV Stand - using working TV stand image
-            'tv stand': 'https://images.unsplash.com/photo-1617486492310-ef1a3d5e3a64?w=400&h=300&fit=crop&auto=format&q=80',
-            
-            # Leather Sofa 3 Seater - using working sofa image
-            'leather sofa 3 seater': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop&auto=format&q=80',
-            'leather sofa': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop&auto=format&q=80',
-            
-            # Kitchen Cabinet Set - using working kitchen cabinets image
-            'kitchen cabinet set': 'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=400&h=300&fit=crop&auto=format&q=80',
-            
-            # Kitchen Island - using working kitchen island image
-            'kitchen island': 'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=400&h=300&fit=crop&auto=format&q=80',
-            
-            # Filing Cabinet 4 Drawers - using working filing cabinet image
-            'filing cabinet 4 drawers': 'https://images.unsplash.com/photo-1535953291981-b7b55c3c5fe4?w=400&h=300&fit=crop&auto=format&q=80',
-            
-            # Dining Chairs Set (6) - using working dining chairs image
-            'dining chairs set (6)': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=400&h=300&fit=crop&auto=format&q=80',
-            'dining chairs set': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=400&h=300&fit=crop&auto=format&q=80',
-            
-            # Dining Table 6 Seater - using working dining table image
-            'dining table 6 seater': 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=400&h=300&fit=crop&auto=format&q=80',
+        local_image_map = {
+            'amin furniture': 'Amin Furniture.png',
+            'bed': 'bed.png',
+            'bedroom': 'bedroom.png',
+            'single bed': 'single bed.png',
+            'nightstand': 'nightstand.png',
+            'wardrobe brown': 'wardrobe brown.png',
+            'wardrobe white': 'wardrobe white.png',
+            'leather sofa': 'Leather Sofa.png',
+            'sofa': 'sofa.png',
+            'tv stand': 'TV stand.png',
+            'coffe table': 'coffe table.png',
+            'dining table': 'dining table.png',
+            'chairs': 'Chairs.png',
+            'office desk': 'Office Desk.png',
+            'drawer': 'drawer.png',
+            'dining room': 'dining room.png',
+            'living room': 'living room.png',
+            'office': 'office.png',
+            'outdoor': 'outdoor.png',
+            'outdoor setting': 'outdoor setting.png',
+            'outdoor swing': 'outdoor swing.png',
         }
         
-        # Check exact matches first
-        for exact_name, image_url in exact_mappings.items():
-            if exact_name in product_name_lower:
-                return image_url
+        category_fallback = {
+            'bedroom': 'bedroom.png',
+            'bed room': 'bedroom.png',
+            'living room': 'living room.png',
+            'office': 'office.png',
+            'outdoor': 'outdoor.png',
+            'dining room': 'dining room.png',
+        }
         
-        # Then try keyword matching
-        for keyword, image_url in PRODUCT_TYPE_IMAGES.items():
-            if keyword in product_name_lower:
-                return image_url
+        if product_name_lower in local_image_map:
+            filename = local_image_map[product_name_lower]
+            local_path = os.path.join(app.root_path, 'images', 'products', filename)
+            if os.path.exists(local_path):
+                return url_for('product_image', filename=filename)
         
-        # Fallback to category image
-        return CATEGORY_IMAGES.get(category, CATEGORY_IMAGES['default'])
+        category_key = (category or '').strip().lower()
+        if category_key in category_fallback:
+            filename = category_fallback[category_key]
+            local_path = os.path.join(app.root_path, 'images', 'products', filename)
+            if os.path.exists(local_path):
+                return url_for('product_image', filename=filename)
+        
+        default_local = local_image_map['amin furniture']
+        default_path = os.path.join(app.root_path, 'images', 'products', default_local)
+        if os.path.exists(default_path):
+            return url_for('product_image', filename=default_local)
+        
+        # No remote image fallback; use local files only
+        return url_for('product_image', filename=local_image_map['amin furniture'])
     
     return dict(get_product_image=get_product_image)
 

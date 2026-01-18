@@ -135,21 +135,22 @@ INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNum
 ('Hala', 'Omar', 'Warehouse Manager', '2020-06-01', 3500.00, '0599666666', 'hala@aminfurniture.ps', '1234');
 
 INSERT INTO Products (ProductName, Dimensions, Color, Material, SellingPrice, StockQuantity, CategoryName, SupplierID, DateAdded) VALUES
-('King Size Bed Frame', '200x200 cm', 'Brown', 'Wood', 1500.00, 8, 'Bedroom', 1, '2023-01-10'),
-('Queen Size Bed Frame', '160x200 cm', 'White', 'Wood', 1200.00, 12, 'Bedroom', 1, '2023-01-10'),
-('Wardrobe 3 Doors', '180x220 cm', 'Brown', 'MDF', 2000.00, 5, 'Bedroom', 2, '2023-02-15'),
+('Bed', '200x200 cm', 'Brown', 'Wood', 1500.00, 8, 'Bedroom', 1, '2023-01-10'),
+('Bedroom Set', '320x280 cm', 'Walnut', 'Wood', 5200.00, 4, 'Bedroom', 1, '2023-01-10'),
+('Wardrobe', '180x220 cm', 'Brown', 'MDF', 2000.00, 5, 'Bedroom', 2, '2023-02-15'),
 ('Nightstand', '50x40 cm', 'Brown', 'Wood', 300.00, 20, 'Bedroom', 1, '2023-01-10'),
-('Leather Sofa 3 Seater', '220x90 cm', 'Black', 'Leather', 3500.00, 6, 'Living Room', 3, '2023-03-01'),
+('Leather Sofa', '220x90 cm', 'Black', 'Leather', 3500.00, 6, 'Living Room', 3, '2023-03-01'),
 ('Coffee Table', '120x60 cm', 'Brown', 'Glass & Wood', 800.00, 15, 'Living Room', 2, '2023-03-01'),
-('TV Stand', '180x45 cm', 'Black', 'MDF', 1200.00, 10, 'Living Room', 2, '2023-03-15'),
+('TV Stand', '180x45 cm', 'Walnut', 'MDF', 1200.00, 10, 'Living Room', 2, '2023-03-15'),
 ('Office Desk', '160x80 cm', 'White', 'MDF', 1500.00, 8, 'Office', 4, '2023-04-01'),
-('Ergonomic Office Chair', '60x60 cm', 'Black', 'Mesh & Metal', 1200.00, 15, 'Office', 4, '2023-04-01'),
-('Filing Cabinet 4 Drawers', '45x50 cm', 'Gray', 'Metal', 800.00, 12, 'Office', 4, '2023-04-10'),
-('Dining Table 6 Seater', '180x90 cm', 'Brown', 'Wood', 2500.00, 7, 'Dining Room', 1, '2023-05-01'),
-('Dining Chairs Set (6)', '45x45 cm', 'Brown', 'Wood & Fabric', 1800.00, 4, 'Dining Room', 1, '2023-05-01'),
-('Kitchen Island', '120x80 cm', 'White', 'MDF', 3000.00, 3, 'Kitchen', 2, '2023-05-15'),
-('Kitchen Cabinet Set', '300x90 cm', 'White', 'MDF', 5000.00, 2, 'Kitchen', 2, '2023-05-15'),
-('Single Bed Frame', '90x200 cm', 'White', 'Wood', 800.00, 18, 'Bedroom', 5, '2023-06-01');
+('Drawer', '45x50 cm', 'White', 'Wood', 700.00, 12, 'Office', 4, '2023-04-10'),
+('Dining Table', '180x90 cm', 'Brown', 'Wood', 2500.00, 7, 'Dining Room', 1, '2023-05-01'),
+('Dining Chairs', '45x45 cm', 'Beige', 'Wood & Fabric', 1800.00, 6, 'Dining Room', 1, '2023-05-01'),
+('Sofa', '210x95 cm', 'Beige', 'Fabric', 2800.00, 6, 'Living Room', 3, '2023-05-20'),
+('Outdoor Setting', '300x120 cm', 'Gray', 'Metal & Rattan', 4000.00, 3, 'Outdoor', 5, '2023-06-10'),
+('Outdoor Swing', '120x110 cm', 'Gray', 'Metal', 2200.00, 5, 'Outdoor', 5, '2023-06-15'),
+('Single Bed', '90x200 cm', 'White', 'Wood', 800.00, 18, 'Bedroom', 5, '2023-06-01'),
+('Wardrobe Brown', '200x230 cm', 'Brown', 'Wood', 2600.00, 3, 'Bedroom', 2, '2023-06-12');
 
 INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate, Password) VALUES
 ('Ahmad', 'Salem', 'ahmad.salem@email.com', '0599111222', 'Ramallah, Al-Bireh Street', '2023-01-05', '1234'),
@@ -163,18 +164,18 @@ INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, Registr
 
 
 INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, Status) VALUES
-(1, 2, '2025-06-10', 'Completed'),
-(2, 2, '2025-06-15', 'Completed'),
-(3, 3, '2025-06-20', 'Completed'),
-(4, 2, '2025-07-01', 'Completed'),
-(5, 3, '2025-07-05', 'Completed'),
-(6, 2, '2025-07-10', 'Completed'),
-(7, 3, '2025-07-15', 'Completed'),
-(8, 2, '2025-11-20', 'Ready to Deliver'),
-(1, 3, '2025-11-25', 'Processing'),
-(2, 2, '2025-11-01', 'Pending'),
-(3, 2, '2025-11-28', 'Scheduled for Delivery'),
-(4, 3, '2025-11-30', 'Ready to Deliver');
+(1, 2, '2023-02-12', 'Completed'),
+(2, 2, '2023-06-05', 'Completed'),
+(3, 3, '2023-11-22', 'Completed'),
+(4, 2, '2024-03-18', 'Completed'),
+(5, 3, '2024-08-09', 'Completed'),
+(6, 2, '2024-12-27', 'Completed'),
+(7, 3, '2025-05-14', 'Completed'),
+(8, 2, '2025-10-03', 'Ready to Deliver'),
+(1, 3, '2025-12-21', 'Processing'),
+(2, 2, '2026-01-08', 'Pending'),
+(3, 2, '2026-03-12', 'Scheduled for Delivery'),
+(4, 3, '2026-06-19', 'Ready to Deliver');
 
 
 INSERT INTO Order_Product (OrderID, ProductID, Quantity, PricePerUnit) VALUES
