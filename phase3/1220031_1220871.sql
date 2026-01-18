@@ -37,10 +37,11 @@ CREATE TABLE Customers (
     CustomerID INT PRIMARY KEY AUTO_INCREMENT,
     FirstName VARCHAR(50) NOT NULL,
     LastName VARCHAR(50) NOT NULL,
-    Email VARCHAR(100),
+    Email VARCHAR(100) UNIQUE,
     PhoneNumber VARCHAR(20),
     Address TEXT,
-    RegistrationDate DATE
+    RegistrationDate DATE,
+    Password VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Employees (
@@ -51,7 +52,8 @@ CREATE TABLE Employees (
     HireDate DATE,
     Salary DECIMAL(10, 2),
     PhoneNumber VARCHAR(20),
-    Email VARCHAR(100)
+    Email VARCHAR(100) UNIQUE,
+    Password VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Orders (
@@ -124,13 +126,13 @@ INSERT INTO Suppliers (SupplierName, ContactPerson, PhoneNumber, Email) VALUES
 ('Luxury Interiors', 'Fatima Nasser', '0599456789', 'fatima@luxuryinteriors.ps'),
 ('Budget Furniture', 'Omar Saleh', '0599567890', 'omar@budgetfurniture.ps');
 
-INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNumber, Email) VALUES
-('Khalil', 'Abu Hamad', 'Manager', '2020-01-15', 5000.00, '0599111111', 'khalil@aminfurniture.ps'),
-('Layla', 'Mahmoud', 'Sales Associate', '2021-03-20', 2500.00, '0599222222', 'layla@aminfurniture.ps'),
-('Youssef', 'Ibrahim', 'Sales Associate', '2021-05-10', 2500.00, '0599333333', 'youssef@aminfurniture.ps'),
-('Hassan', 'Hassan', 'Delivery Staff', '2022-01-08', 2000.00, '0599444444', 'hassan@aminfurniture.ps'),
-('Rami', 'Said', 'Delivery Staff', '2022-02-15', 2000.00, '0599555555', 'rami@aminfurniture.ps'),
-('Hala', 'Omar', 'Warehouse Manager', '2020-06-01', 3500.00, '0599666666', 'hala@aminfurniture.ps');
+INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNumber, Email, Password) VALUES
+('Khalil', 'Abu Hamad', 'Manager', '2020-01-15', 5000.00, '0599111111', 'khalil@aminfurniture.ps', '1234'),
+('Layla', 'Mahmoud', 'Sales Associate', '2021-03-20', 2500.00, '0599222222', 'layla@aminfurniture.ps', '1234'),
+('Youssef', 'Ibrahim', 'Sales Associate', '2021-05-10', 2500.00, '0599333333', 'youssef@aminfurniture.ps', '1234'),
+('Hassan', 'Hassan', 'Delivery Staff', '2022-01-08', 2000.00, '0599444444', 'hassan@aminfurniture.ps', '1234'),
+('Rami', 'Said', 'Delivery Staff', '2022-02-15', 2000.00, '0599555555', 'rami@aminfurniture.ps', '1234'),
+('Hala', 'Omar', 'Warehouse Manager', '2020-06-01', 3500.00, '0599666666', 'hala@aminfurniture.ps', '1234');
 
 INSERT INTO Products (ProductName, Dimensions, Color, Material, SellingPrice, StockQuantity, CategoryName, SupplierID, DateAdded) VALUES
 ('King Size Bed Frame', '200x200 cm', 'Brown', 'Wood', 1500.00, 8, 'Bedroom', 1, '2023-01-10'),
@@ -149,15 +151,15 @@ INSERT INTO Products (ProductName, Dimensions, Color, Material, SellingPrice, St
 ('Kitchen Cabinet Set', '300x90 cm', 'White', 'MDF', 5000.00, 2, 'Kitchen', 2, '2023-05-15'),
 ('Single Bed Frame', '90x200 cm', 'White', 'Wood', 800.00, 18, 'Bedroom', 5, '2023-06-01');
 
-INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate) VALUES
-('Ahmad', 'Salem', 'ahmad.salem@email.com', '0599111222', 'Ramallah, Al-Bireh Street', '2023-01-05'),
-('Mariam', 'Khalil', 'mariam.khalil@email.com', '0599222333', 'Ramallah, Al-Manara Square', '2023-01-10'),
-('Omar', 'Nasser', 'omar.nasser@email.com', '0599333444', 'Ramallah, Al-Irsal Street', '2023-02-01'),
-('Lina', 'Mahmoud', 'lina.mahmoud@email.com', '0599444555', 'Ramallah, Al-Masyoun', '2023-02-15'),
-('Khaled', 'Ibrahim', 'khaled.ibrahim@email.com', '0599555666', 'Ramallah, Al-Tireh', '2023-03-01'),
-('Rana', 'Hassan', 'rana.hassan@email.com', '0599666777', 'Ramallah, Al-Balou', '2023-03-10'),
-('Tamer', 'Said', 'tamer.said@email.com', '0599777888', 'Ramallah, Al-Jalazoun', '2023-04-01'),
-('Dina', 'Omar', 'dina.omar@email.com', '0599888999', 'Ramallah, Al-Masyoun', '2023-04-15');
+INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate, Password) VALUES
+('Ahmad', 'Salem', 'ahmad.salem@email.com', '0599111222', 'Ramallah, Al-Bireh Street', '2023-01-05', '1234'),
+('Mariam', 'Khalil', 'mariam.khalil@email.com', '0599222333', 'Ramallah, Al-Manara Square', '2023-01-10', '1234'),
+('Omar', 'Nasser', 'omar.nasser@email.com', '0599333444', 'Ramallah, Al-Irsal Street', '2023-02-01', '1234'),
+('Lina', 'Mahmoud', 'lina.mahmoud@email.com', '0599444555', 'Ramallah, Al-Masyoun', '2023-02-15', '1234'),
+('Khaled', 'Ibrahim', 'khaled.ibrahim@email.com', '0599555666', 'Ramallah, Al-Tireh', '2023-03-01', '1234'),
+('Rana', 'Hassan', 'rana.hassan@email.com', '0599666777', 'Ramallah, Al-Balou', '2023-03-10', '1234'),
+('Tamer', 'Said', 'tamer.said@email.com', '0599777888', 'Ramallah, Al-Jalazoun', '2023-04-01', '1234'),
+('Dina', 'Omar', 'dina.omar@email.com', '0599888999', 'Ramallah, Al-Masyoun', '2023-04-15', '1234');
 
 
 INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, Status) VALUES

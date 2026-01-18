@@ -283,13 +283,11 @@ def login():
                 cursor.execute("""
                     SELECT CustomerID, FirstName, LastName, Email
                     FROM Customers
-                    WHERE Email = %s
-                """, (email,))
+                    WHERE Email = %s AND Password = %s
+                """, (email, password))
                 user = cursor.fetchone()
                 
                 if user:
-                    # For demo: accept any password if email exists
-                    # In production, use password hashing
                     session['user_id'] = user['CustomerID']
                     session['user_name'] = f"{user['FirstName']} {user['LastName']}"
                     session['role'] = 'customer'
@@ -309,8 +307,8 @@ def login():
                 cursor.execute("""
                     SELECT EmployeeID, FirstName, LastName, Email, Position
                     FROM Employees
-                    WHERE Email = %s AND Position = %s
-                """, (email, position_filter))
+                    WHERE Email = %s AND Password = %s AND Position = %s
+                """, (email, password, position_filter))
                 user = cursor.fetchone()
                 
                 if user:
@@ -360,15 +358,16 @@ def register():
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate, Password)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (
                 request.form['first_name'],
                 request.form['last_name'],
                 request.form['email'],
                 request.form.get('phone_number'),
                 request.form.get('address'),
-                datetime.now().date()
+                datetime.now().date(),
+                request.form['password']
             ))
             conn.commit()
             flash('Registration successful! Please login.', 'success')
@@ -2063,6 +2062,7 @@ def add_customer():
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
         phone_number = request.form.get('phone_number', '').strip()
+        password = request.form.get('password', '').strip()
         
         # Validate first name
         is_valid, error_msg = validate_name(first_name, 'First name')
@@ -2083,6 +2083,10 @@ def add_customer():
                 flash(error_msg, 'error')
                 return redirect(url_for('add_customer'))
         
+        if not password:
+            flash('Password is required.', 'error')
+            return redirect(url_for('add_customer'))
+        
         conn = get_db_connection()
         if not conn:
             flash('Database connection failed!', 'error')
@@ -2091,15 +2095,16 @@ def add_customer():
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate, Password)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (
                 first_name,
                 last_name,
                 request.form.get('email', '').strip() or None,
                 phone_number or None,
                 request.form.get('address', '').strip() or None,
-                datetime.now().date()
+                datetime.now().date(),
+                password
             ))
             conn.commit()
             flash('Customer added successfully!', 'success')
@@ -2148,20 +2153,37 @@ def update_customer(customer_id):
                 flash(error_msg, 'error')
                 return redirect(url_for('update_customer', customer_id=customer_id))
         
+        password = request.form.get('password', '').strip()
         try:
-            cursor.execute("""
-                UPDATE Customers
-                SET FirstName = %s, LastName = %s, Email = %s, 
-                    PhoneNumber = %s, Address = %s
-                WHERE CustomerID = %s
-            """, (
-                first_name,
-                last_name,
-                request.form.get('email', '').strip() or None,
-                phone_number or None,
-                request.form.get('address', '').strip() or None,
-                customer_id
-            ))
+            if password:
+                cursor.execute("""
+                    UPDATE Customers
+                    SET FirstName = %s, LastName = %s, Email = %s,
+                        PhoneNumber = %s, Address = %s, Password = %s
+                    WHERE CustomerID = %s
+                """, (
+                    first_name,
+                    last_name,
+                    request.form.get('email', '').strip() or None,
+                    phone_number or None,
+                    request.form.get('address', '').strip() or None,
+                    password,
+                    customer_id
+                ))
+            else:
+                cursor.execute("""
+                    UPDATE Customers
+                    SET FirstName = %s, LastName = %s, Email = %s,
+                        PhoneNumber = %s, Address = %s
+                    WHERE CustomerID = %s
+                """, (
+                    first_name,
+                    last_name,
+                    request.form.get('email', '').strip() or None,
+                    phone_number or None,
+                    request.form.get('address', '').strip() or None,
+                    customer_id
+                ))
             conn.commit()
             flash('Customer updated successfully!', 'success')
             return redirect(url_for('customers'))
@@ -3059,6 +3081,7 @@ def add_employee():
         hire_date = request.form.get('hire_date', '').strip()
         salary = request.form.get('salary', '').strip()
         phone_number = request.form.get('phone_number', '').strip()
+        password = request.form.get('password', '').strip()
         
         # Validate first name
         is_valid, error_msg = validate_name(first_name, 'First name')
@@ -3099,10 +3122,14 @@ def add_employee():
                 flash(error_msg, 'error')
                 return redirect(url_for('add_employee'))
         
+        if not password:
+            flash('Password is required.', 'error')
+            return redirect(url_for('add_employee'))
+        
         try:
             cursor.execute("""
-                INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNumber, Email)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNumber, Email, Password)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 first_name,
                 last_name,
@@ -3110,7 +3137,8 @@ def add_employee():
                 hire_date if hire_date else None,
                 float(salary) if salary else None,
                 phone_number if phone_number else None,
-                request.form.get('email', '').strip() or None
+                request.form.get('email', '').strip() or None,
+                password
             ))
             conn.commit()
             flash('Employee added successfully!', 'success')
@@ -3184,22 +3212,42 @@ def update_employee(employee_id):
                 flash(error_msg, 'error')
                 return redirect(url_for('update_employee', employee_id=employee_id))
         
+        password = request.form.get('password', '').strip()
         try:
-            cursor.execute("""
-                UPDATE Employees
-                SET FirstName = %s, LastName = %s, Position = %s, 
-                    HireDate = %s, Salary = %s, PhoneNumber = %s, Email = %s
-                WHERE EmployeeID = %s
-            """, (
-                first_name,
-                last_name,
-                position,
-                hire_date if hire_date else None,
-                float(salary) if salary else None,
-                phone_number if phone_number else None,
-                request.form.get('email', '').strip() or None,
-                employee_id
-            ))
+            if password:
+                cursor.execute("""
+                    UPDATE Employees
+                    SET FirstName = %s, LastName = %s, Position = %s,
+                        HireDate = %s, Salary = %s, PhoneNumber = %s, Email = %s,
+                        Password = %s
+                    WHERE EmployeeID = %s
+                """, (
+                    first_name,
+                    last_name,
+                    position,
+                    hire_date if hire_date else None,
+                    float(salary) if salary else None,
+                    phone_number if phone_number else None,
+                    request.form.get('email', '').strip() or None,
+                    password,
+                    employee_id
+                ))
+            else:
+                cursor.execute("""
+                    UPDATE Employees
+                    SET FirstName = %s, LastName = %s, Position = %s,
+                        HireDate = %s, Salary = %s, PhoneNumber = %s, Email = %s
+                    WHERE EmployeeID = %s
+                """, (
+                    first_name,
+                    last_name,
+                    position,
+                    hire_date if hire_date else None,
+                    float(salary) if salary else None,
+                    phone_number if phone_number else None,
+                    request.form.get('email', '').strip() or None,
+                    employee_id
+                ))
             conn.commit()
             flash('Employee updated successfully!', 'success')
             return redirect(url_for('employees'))
