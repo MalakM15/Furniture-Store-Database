@@ -1,6 +1,6 @@
 ===========================================
-AMIN Furniture Store - Phase 3 Prototype
-Student IDs: 1220031_1220871
+AMIN Furniture Store - Prototype
+Student Names: Malak Milhem, Layal Hajji
 ===========================================
 
 SETUP INSTRUCTIONS:
@@ -52,11 +52,4 @@ SETUP INSTRUCTIONS:
      * Checking inventory
      * Viewing reports
 
-===========================================
-IMPORTANT NOTES:
-- Make sure to update the student IDs in the filenames if needed
-- The SQL file contains both schema and dummy data
-- All 12 tables from Phase 2 are implemented
-- The Flask application provides a fully functional web interface
-===========================================
 

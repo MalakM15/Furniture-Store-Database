@@ -1,5 +1,4 @@
 -- AMIN Furniture Store Database Schema
--- Student IDs: 1220031_1220871
 
 -- Create database if it doesn't exist
 CREATE DATABASE IF NOT EXISTS amin_furniture;
@@ -285,4 +284,10 @@ INSERT INTO Delivery_Employee (DeliveryID, EmployeeID) VALUES
 (6, 4),
 (6, 5),
 (7, 5),
+<<<<<<< HEAD
 (11, 5);
+=======
+(8, 4),
+(9, 5),
+(10, 4);
+>>>>>>> fac2efc6de32a6586282f1ddd716b37621d48d9f
