@@ -30,7 +30,7 @@
             <select name="category" class="form-control" style="width: auto; min-width: 200px;">
                 <option value="">All Categories</option>
                 {% for cat in categories %}
-                    <option value="{{ cat.CategoryID }}" {% if selected_category == cat.CategoryID|string %}selected{% endif %}>
+                    <option value="{{ cat.CategoryName }}" {% if selected_category == cat.CategoryName %}selected{% endif %}>
                         {{ cat.CategoryName }}
                     </option>
                 {% endfor %}

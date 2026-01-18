@@ -33,14 +33,12 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group">
                     <label class="form-label">Category</label>
-                    <select name="category_id" class="form-control">
-                        <option value="">Select Category</option>
+                    <input list="category_options" name="category_name" class="form-control" value="{{ product.CategoryName or '' }}" placeholder="Enter category">
+                    <datalist id="category_options">
                         {% for cat in categories %}
-                            <option value="{{ cat.CategoryID }}" {% if product.CategoryID == cat.CategoryID %}selected{% endif %}>
-                                {{ cat.CategoryName }}
-                            </option>
+                            <option value="{{ cat.CategoryName }}"></option>
                         {% endfor %}
-                    </select>
+                    </datalist>
                 </div>
                 
                 <div class="form-group">

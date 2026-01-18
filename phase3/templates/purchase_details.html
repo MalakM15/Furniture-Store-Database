@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Details - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Purchase #{{ purchase.PurchaseID }}</h1>
+        <p>Supplier purchase details</p>
+    </div>
+    <a href="{{ url_for('purchases') }}" class="btn btn-secondary">
+        <i data-lucide="arrow-left"></i>
+        Back to Purchases
+    </a>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Purchase Info</h3>
+            {% if purchase.ReceivedBy %}
+                <span class="badge badge-success">Received</span>
+            {% else %}
+                <span class="badge badge-warning">Pending</span>
+            {% endif %}
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Supplier</span>
+                <span class="info-value">{{ purchase.SupplierName or '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Purchase Date</span>
+                <span class="info-value">{{ purchase.PurchaseDate.strftime('%B %d, %Y') if purchase.PurchaseDate else '—' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total Cost</span>
+                <span class="info-value" style="color: var(--accent-gold); font-weight: 600;">{{ "%.2f"|format(purchase.TotalCost or 0) }} ₪</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Received By</span>
+                <span class="info-value">
+                    {% if purchase.ReceivedBy %}
+                        {{ purchase.ReceivedByFirstName }} {{ purchase.ReceivedByLastName }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card actions-card">
+        <div class="card-header">
+            <h3 class="card-title">Actions</h3>
+        </div>
+        <div style="padding: 1rem;">
+            {% if can_confirm %}
+            <form method="POST" action="{{ url_for('receive_purchase', purchase_id=purchase.PurchaseID) }}" onsubmit="return confirm('Confirm this purchase as received?');">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i data-lucide="check-circle"></i>
+                    Confirm Received
+                </button>
+            </form>
+            {% else %}
+            <div class="empty-state" style="padding: 0.75rem;">
+                <i data-lucide="check-circle"></i>
+                <p>Purchase already received</p>
+            </div>
+            {% endif %}
+            
+            {% if is_manager and not purchase.ReceivedBy %}
+            <div style="margin-top: 0.75rem;">
+                <a href="{{ url_for('update_purchase', purchase_id=purchase.PurchaseID) }}" class="btn btn-secondary" style="width: 100%; margin-bottom: 0.5rem;">
+                    <i data-lucide="edit"></i>
+                    Edit Purchase
+                </a>
+                <form method="POST" action="{{ url_for('delete_purchase', purchase_id=purchase.PurchaseID) }}" onsubmit="return confirm('Delete this purchase?');">
+                    <button type="submit" class="btn btn-danger" style="width: 100%;">
+                        <i data-lucide="trash-2"></i>
+                        Delete Purchase
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">Purchase Items</h3>
+    </div>
+    
+    {% if items %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Cost Per Unit</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.ProductName }}</td>
+                    <td>{{ item.QuantityPurchased }}</td>
+                    <td>{{ "%.2f"|format(item.CostPerUnit) }} ₪</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(item.QuantityPurchased * item.CostPerUnit) }} ₪</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="package"></i>
+        <p>No items in this purchase</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .info-label {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+    
+    .info-value {
+        font-weight: 500;
+    }
+    
+    .actions-card {
+        align-self: start;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

@@ -108,7 +108,7 @@
 
 <!-- Employee Performance & Monthly Sales -->
 <div class="grid-2 fade-in" style="animation-delay: 0.2s;">
-    <!-- Employee Performance -->
+   
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">
@@ -128,6 +128,10 @@
                     <div class="employee-stats">
                         <span><i data-lucide="shopping-bag" style="width: 14px; height: 14px;"></i> {{ emp.OrderCount or 0 }} orders</span>
                         <span><i data-lucide="banknote" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.TotalSales or 0) }} ₪</span>
+                        <span><i data-lucide="truck" style="width: 14px; height: 14px;"></i> {{ emp.DeliveredOrders or 0 }} delivered</span>
+                        <span><i data-lucide="package-check" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.DeliveredValue or 0) }} ₪</span>
+                        <span><i data-lucide="package" style="width: 14px; height: 14px;"></i> {{ emp.ReceivedPurchases or 0 }} received</span>
+                        <span><i data-lucide="clipboard-check" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.TotalReceivedCost or 0) }} ₪</span>
                     </div>
                 </div>
                 <div class="employee-revenue">

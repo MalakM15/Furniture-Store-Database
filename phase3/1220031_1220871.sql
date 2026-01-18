@@ -6,16 +6,10 @@ CREATE DATABASE IF NOT EXISTS amin_furniture;
 USE amin_furniture;
 
 -- DROP TABLES IF EXISTS
-DROP TABLE IF EXISTS Delivery_Employee, Delivery, Payments, Order_Product, Purchase_Product, Orders, Purchases, Products, Employees, Customers, Suppliers, Categories;
+DROP TABLE IF EXISTS Delivery, Payments, Order_Product, Purchase_Product, Orders, Purchases, Products, Employees, Customers, Suppliers;
 
 -- CREATE TABLES
 
-
-CREATE TABLE Categories (
-    CategoryID INT PRIMARY KEY AUTO_INCREMENT,
-    CategoryName VARCHAR(100) NOT NULL,
-    Description TEXT
-);
 
 CREATE TABLE Suppliers (
     SupplierID INT PRIMARY KEY AUTO_INCREMENT,
@@ -33,10 +27,9 @@ CREATE TABLE Products (
     Material VARCHAR(100),
     SellingPrice DECIMAL(10, 2) NOT NULL,
     StockQuantity INT DEFAULT 0,
-    CategoryID INT,
+    CategoryName VARCHAR(100),
     SupplierID INT,
     DateAdded DATE,
-    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID) ON DELETE SET NULL,
     FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID) ON DELETE SET NULL
 );
 
@@ -113,8 +106,7 @@ CREATE TABLE Payments (
 );
 
 CREATE TABLE Delivery (
-    DeliveryID INT PRIMARY KEY AUTO_INCREMENT,
-    OrderID INT UNIQUE,
+    OrderID INT PRIMARY KEY,
     EmployeeID INT,
     DeliveryAddress TEXT,
     ScheduledDate DATE,
@@ -123,23 +115,7 @@ CREATE TABLE Delivery (
     FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID) ON DELETE SET NULL
 );
 
-CREATE TABLE Delivery_Employee (
-    DeliveryEmployeeID INT PRIMARY KEY AUTO_INCREMENT,
-    DeliveryID INT,
-    EmployeeID INT,
-    FOREIGN KEY (DeliveryID) REFERENCES Delivery(DeliveryID) ON DELETE CASCADE,
-    FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID) ON DELETE CASCADE
-);
-
 --  DUMMY DATA
-
-INSERT INTO Categories (CategoryName, Description) VALUES
-('Bedroom', 'Furniture for bedrooms including beds, wardrobes, and nightstands'),
-('Living Room', 'Sofas, coffee tables, TV stands, and living room accessories'),
-('Office', 'Desks, office chairs, filing cabinets, and office equipment'),
-('Dining Room', 'Dining tables, chairs, and dining room furniture'),
-('Kitchen', 'Kitchen cabinets, islands, and storage solutions');
-
 
 INSERT INTO Suppliers (SupplierName, ContactPerson, PhoneNumber, Email) VALUES
 ('Palestine Furniture Co.', 'Ahmed Mansour', '0599123456', 'ahmed@palestinefurniture.ps'),
@@ -156,22 +132,22 @@ INSERT INTO Employees (FirstName, LastName, Position, HireDate, Salary, PhoneNum
 ('Rami', 'Said', 'Delivery Staff', '2022-02-15', 2000.00, '0599555555', 'rami@aminfurniture.ps'),
 ('Hala', 'Omar', 'Warehouse Manager', '2020-06-01', 3500.00, '0599666666', 'hala@aminfurniture.ps');
 
-INSERT INTO Products (ProductName, Dimensions, Color, Material, SellingPrice, StockQuantity, CategoryID, SupplierID, DateAdded) VALUES
-('King Size Bed Frame', '200x200 cm', 'Brown', 'Wood', 1500.00, 8, 1, 1, '2023-01-10'),
-('Queen Size Bed Frame', '160x200 cm', 'White', 'Wood', 1200.00, 12, 1, 1, '2023-01-10'),
-('Wardrobe 3 Doors', '180x220 cm', 'Brown', 'MDF', 2000.00, 5, 1, 2, '2023-02-15'),
-('Nightstand', '50x40 cm', 'Brown', 'Wood', 300.00, 20, 1, 1, '2023-01-10'),
-('Leather Sofa 3 Seater', '220x90 cm', 'Black', 'Leather', 3500.00, 6, 2, 3, '2023-03-01'),
-('Coffee Table', '120x60 cm', 'Brown', 'Glass & Wood', 800.00, 15, 2, 2, '2023-03-01'),
-('TV Stand', '180x45 cm', 'Black', 'MDF', 1200.00, 10, 2, 2, '2023-03-15'),
-('Office Desk', '160x80 cm', 'White', 'MDF', 1500.00, 8, 3, 4, '2023-04-01'),
-('Ergonomic Office Chair', '60x60 cm', 'Black', 'Mesh & Metal', 1200.00, 15, 3, 4, '2023-04-01'),
-('Filing Cabinet 4 Drawers', '45x50 cm', 'Gray', 'Metal', 800.00, 12, 3, 4, '2023-04-10'),
-('Dining Table 6 Seater', '180x90 cm', 'Brown', 'Wood', 2500.00, 7, 4, 1, '2023-05-01'),
-('Dining Chairs Set (6)', '45x45 cm', 'Brown', 'Wood & Fabric', 1800.00, 4, 4, 1, '2023-05-01'),
-('Kitchen Island', '120x80 cm', 'White', 'MDF', 3000.00, 3, 5, 2, '2023-05-15'),
-('Kitchen Cabinet Set', '300x90 cm', 'White', 'MDF', 5000.00, 2, 5, 2, '2023-05-15'),
-('Single Bed Frame', '90x200 cm', 'White', 'Wood', 800.00, 18, 1, 5, '2023-06-01');
+INSERT INTO Products (ProductName, Dimensions, Color, Material, SellingPrice, StockQuantity, CategoryName, SupplierID, DateAdded) VALUES
+('King Size Bed Frame', '200x200 cm', 'Brown', 'Wood', 1500.00, 8, 'Bedroom', 1, '2023-01-10'),
+('Queen Size Bed Frame', '160x200 cm', 'White', 'Wood', 1200.00, 12, 'Bedroom', 1, '2023-01-10'),
+('Wardrobe 3 Doors', '180x220 cm', 'Brown', 'MDF', 2000.00, 5, 'Bedroom', 2, '2023-02-15'),
+('Nightstand', '50x40 cm', 'Brown', 'Wood', 300.00, 20, 'Bedroom', 1, '2023-01-10'),
+('Leather Sofa 3 Seater', '220x90 cm', 'Black', 'Leather', 3500.00, 6, 'Living Room', 3, '2023-03-01'),
+('Coffee Table', '120x60 cm', 'Brown', 'Glass & Wood', 800.00, 15, 'Living Room', 2, '2023-03-01'),
+('TV Stand', '180x45 cm', 'Black', 'MDF', 1200.00, 10, 'Living Room', 2, '2023-03-15'),
+('Office Desk', '160x80 cm', 'White', 'MDF', 1500.00, 8, 'Office', 4, '2023-04-01'),
+('Ergonomic Office Chair', '60x60 cm', 'Black', 'Mesh & Metal', 1200.00, 15, 'Office', 4, '2023-04-01'),
+('Filing Cabinet 4 Drawers', '45x50 cm', 'Gray', 'Metal', 800.00, 12, 'Office', 4, '2023-04-10'),
+('Dining Table 6 Seater', '180x90 cm', 'Brown', 'Wood', 2500.00, 7, 'Dining Room', 1, '2023-05-01'),
+('Dining Chairs Set (6)', '45x45 cm', 'Brown', 'Wood & Fabric', 1800.00, 4, 'Dining Room', 1, '2023-05-01'),
+('Kitchen Island', '120x80 cm', 'White', 'MDF', 3000.00, 3, 'Kitchen', 2, '2023-05-15'),
+('Kitchen Cabinet Set', '300x90 cm', 'White', 'MDF', 5000.00, 2, 'Kitchen', 2, '2023-05-15'),
+('Single Bed Frame', '90x200 cm', 'White', 'Wood', 800.00, 18, 'Bedroom', 5, '2023-06-01');
 
 INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber, Address, RegistrationDate) VALUES
 ('Ahmad', 'Salem', 'ahmad.salem@email.com', '0599111222', 'Ramallah, Al-Bireh Street', '2023-01-05'),
@@ -272,17 +248,3 @@ INSERT INTO Delivery (OrderID, EmployeeID, DeliveryAddress, ScheduledDate, Deliv
 (10, NULL, 'Ramallah, Al-Manara Square', NULL, NULL),
 (11, 5, 'Ramallah, Al-Irsal Street', '2023-11-30', NULL),
 (12, NULL, 'Ramallah, Al-Masyoun', NULL, NULL);
-
-
-INSERT INTO Delivery_Employee (DeliveryID, EmployeeID) VALUES
-(1, 4),
-(2, 4),
-(3, 5),
-(4, 4),
-(5, 5),
-(6, 4),
-(6, 5),
-(7, 5),
-(8, 4),
-(9, 5),
-(10, 4);

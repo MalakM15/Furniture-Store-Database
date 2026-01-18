@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Purchases - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1>Purchases</h1>
+        <p>Track supplier purchases and receiving status</p>
+    </div>
+    {% if is_manager %}
+    <a href="{{ url_for('add_purchase') }}" class="btn btn-primary">
+        <i data-lucide="plus"></i>
+        New Purchase
+    </a>
+    {% endif %}
+</div>
+
+<div class="card fade-in" style="animation-delay: 0.1s;">
+    <form method="GET" action="{{ url_for('purchases') }}">
+        <div style="margin-bottom: 1rem;">
+            <div class="search-container">
+                <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" name="search" placeholder="Search by supplier or purchase ID..." value="{{ search }}" class="form-control" style="padding-left: 3rem;">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="filter"></i>
+                    Search
+                </button>
+                {% if search or status_filter %}
+                <a href="{{ url_for('purchases') }}" class="btn btn-secondary">
+                    <i data-lucide="x"></i>
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div>
+            <div class="filter-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('purchases', search=search) if search else url_for('purchases') }}" class="btn {% if not status_filter %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    All Purchases
+                </a>
+                <a href="{{ url_for('purchases', status='pending', search=search) if search else url_for('purchases', status='pending') }}" class="btn {% if status_filter == 'pending' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i data-lucide="clock"></i>
+                    Pending
+                </a>
+                <a href="{{ url_for('purchases', status='received', search=search) if search else url_for('purchases', status='received') }}" class="btn {% if status_filter == 'received' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i data-lucide="check-circle"></i>
+                    Received
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card fade-in" style="animation-delay: 0.2s;">
+    <div class="card-header">
+        <h3 class="card-title">Purchase List</h3>
+    </div>
+    
+    {% if purchases %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Purchase ID</th>
+                    <th>Supplier</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th>Total Cost</th>
+                    <th>Status</th>
+                    <th>Received By</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for purchase in purchases %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--accent-gold);">#{{ purchase.PurchaseID }}</td>
+                    <td>{{ purchase.SupplierName or '—' }}</td>
+                    <td>{{ purchase.PurchaseDate.strftime('%b %d, %Y') if purchase.PurchaseDate else '—' }}</td>
+                    <td>{{ purchase.ItemCount or 0 }}</td>
+                    <td style="font-weight: 600;">{{ "%.2f"|format(purchase.TotalCost or 0) }} ₪</td>
+                    <td>
+                        {% if purchase.ReceivedBy %}
+                            <span class="badge badge-success">Received</span>
+                        {% else %}
+                            <span class="badge badge-warning">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if purchase.ReceivedBy %}
+                            {{ purchase.ReceivedByFirstName }} {{ purchase.ReceivedByLastName }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('purchase_details', purchase_id=purchase.PurchaseID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View
+                        </a>
+                        {% if is_manager and not purchase.ReceivedBy %}
+                        <a href="{{ url_for('update_purchase', purchase_id=purchase.PurchaseID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="edit"></i>
+                            Edit
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_purchase', purchase_id=purchase.PurchaseID) }}" style="display: inline;" onsubmit="return confirm('Delete this purchase?');">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i data-lucide="trash-2"></i>
+                                Delete
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="package"></i>
+        <p>No purchases found</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

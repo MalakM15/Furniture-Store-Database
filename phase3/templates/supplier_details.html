@@ -77,6 +77,22 @@
                 <div class="stat-value">{{ supplier.ProductCount or 0 }}</div>
                 <div class="stat-label">Total Products</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="shopping-bag"></i>
+                </div>
+                <div class="stat-value">{{ purchase_stats.PurchaseCount or 0 }}</div>
+                <div class="stat-label">Total Purchases</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="calendar"></i>
+                </div>
+                <div class="stat-value">
+                    {{ purchase_stats.LastPurchaseDate.strftime('%b %d, %Y') if purchase_stats.LastPurchaseDate else '—' }}
+                </div>
+                <div class="stat-label">Last Purchase</div>
+            </div>
         </div>
     </div>
 </div>
@@ -103,6 +119,7 @@
                     <th>Dimensions</th>
                     <th>Price</th>
                     <th>Stock</th>
+                    <th>Last Purchase</th>
                     <th>Date Added</th>
                 </tr>
             </thead>
@@ -124,6 +141,7 @@
                             <span class="badge badge-danger">Out of Stock</span>
                         {% endif %}
                     </td>
+                    <td>{{ product.LastPurchaseDate.strftime('%b %d, %Y') if product.LastPurchaseDate else '—' }}</td>
                     <td>{{ product.DateAdded.strftime('%b %d, %Y') if product.DateAdded else '—' }}</td>
                 </tr>
                 {% endfor %}

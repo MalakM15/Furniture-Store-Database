@@ -101,7 +101,7 @@
             </button>
         </form>
     </div>
-    {% elif is_assigned or order.DeliveryID %}
+    {% elif is_assigned or order.DeliveryOrderID %}
     <form method="POST" action="{{ url_for('delivery_update_order', order_id=order.OrderID) }}" id="deliveryForm">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem;">
             <div class="form-group">

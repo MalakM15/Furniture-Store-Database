@@ -83,6 +83,46 @@ def validate_salary(salary_str):
     except ValueError:
         return False, 'Salary must be a valid number!'
 
+def parse_purchase_items(form):
+    """Parse and validate purchase items from a submitted form"""
+    product_ids = form.getlist('product_id')
+    quantities = form.getlist('quantity')
+    max_len = max(len(product_ids), len(quantities))
+    items = []
+    seen_products = set()
+    
+    for idx in range(max_len):
+        product_id_raw = product_ids[idx].strip() if idx < len(product_ids) else ''
+        quantity_raw = quantities[idx].strip() if idx < len(quantities) else ''
+        
+        if not product_id_raw and not quantity_raw:
+            continue
+        
+        if not product_id_raw or not quantity_raw:
+            return None, 'Each purchase item must include product and quantity.'
+        
+        try:
+            product_id = int(product_id_raw)
+            quantity = int(quantity_raw)
+        except ValueError:
+            return None, 'Purchase items must use valid numbers.'
+        
+        if product_id in seen_products:
+            return None, 'Duplicate product in purchase items is not allowed.'
+        if quantity <= 0:
+            return None, 'Quantity must be at least 1.'
+        
+        items.append({
+            'product_id': product_id,
+            'quantity': quantity
+        })
+        seen_products.add(product_id)
+    
+    if not items:
+        return None, 'Add at least one purchase item.'
+    
+    return items, None
+
 # Role-based access control decorators
 def login_required(f):
     @wraps(f)
@@ -379,20 +419,23 @@ def customer_dashboard():
             LIMIT 10
         """, (customer_id,))
         orders = cursor.fetchall()
-        # Handle NULL TotalAmount
         for order in orders:
             if order.get('TotalAmount') is None:
                 order['TotalAmount'] = 0
         
         cursor.execute("""
-            SELECT COUNT(*) as total_orders,
-                   SUM(CASE WHEN o.Status = 'Completed' THEN op.Quantity * op.PricePerUnit ELSE 0 END) as total_spent
+            SELECT 
+                COUNT(DISTINCT o.OrderID) as total_orders,
+                (
+                    SELECT SUM(op2.Quantity * op2.PricePerUnit)
+                    FROM Orders o2
+                    LEFT JOIN Order_Product op2 ON o2.OrderID = op2.OrderID
+                    WHERE o2.CustomerID = %s AND o2.Status = 'Completed'
+                ) as total_spent
             FROM Orders o
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.CustomerID = %s
-        """, (customer_id,))
+        """, (customer_id, customer_id))
         stats = cursor.fetchone()
-        # Handle NULL total_spent
         if stats and stats.get('total_spent') is None:
             stats['total_spent'] = 0
         
@@ -424,9 +467,8 @@ def customer_catalog():
         query = """
             SELECT p.ProductID, p.ProductName, p.Dimensions, p.Color, p.Material,
                    p.SellingPrice, p.StockQuantity, p.DateAdded,
-                   c.CategoryName, s.SupplierName
+                   p.CategoryName, s.SupplierName
             FROM Products p
-            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
             LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
             WHERE p.StockQuantity > 0
         """
@@ -437,7 +479,7 @@ def customer_catalog():
             params.extend([f'%{search}%', f'%{search}%'])
         
         if category:
-            query += " AND c.CategoryID = %s"
+            query += " AND p.CategoryName = %s"
             params.append(category)
         
         query += " ORDER BY p.ProductName"
@@ -445,7 +487,12 @@ def customer_catalog():
         cursor.execute(query, params)
         products = cursor.fetchall()
         
-        cursor.execute("SELECT CategoryID, CategoryName FROM Categories ORDER BY CategoryName")
+        cursor.execute("""
+            SELECT DISTINCT CategoryName
+            FROM Products
+            WHERE CategoryName IS NOT NULL AND CategoryName <> ''
+            ORDER BY CategoryName
+        """)
         categories = cursor.fetchall()
         
     except Error as e:
@@ -892,13 +939,25 @@ def customer_profile():
         cursor.execute("""
             SELECT 
                 COUNT(DISTINCT o.OrderID) as total_orders,
-                SUM(CASE WHEN o.Status = 'Completed' THEN op.Quantity * op.PricePerUnit ELSE 0 END) as total_spent,
-                COUNT(DISTINCT CASE WHEN o.Status = 'Pending' THEN o.OrderID END) as pending_orders,
-                COUNT(DISTINCT CASE WHEN o.Status = 'Completed' THEN o.OrderID END) as completed_orders
+                (
+                    SELECT SUM(op2.Quantity * op2.PricePerUnit)
+                    FROM Orders o2
+                    LEFT JOIN Order_Product op2 ON o2.OrderID = op2.OrderID
+                    WHERE o2.CustomerID = %s AND o2.Status = 'Completed'
+                ) as total_spent,
+                (
+                    SELECT COUNT(DISTINCT o3.OrderID)
+                    FROM Orders o3
+                    WHERE o3.CustomerID = %s AND o3.Status = 'Pending'
+                ) as pending_orders,
+                (
+                    SELECT COUNT(DISTINCT o4.OrderID)
+                    FROM Orders o4
+                    WHERE o4.CustomerID = %s AND o4.Status = 'Completed'
+                ) as completed_orders
             FROM Orders o
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.CustomerID = %s
-        """, (customer_id,))
+        """, (customer_id, customer_id, customer_id, customer_id))
         stats = cursor.fetchone()
         
         # Get recent orders
@@ -946,37 +1005,91 @@ def employee_profile():
             flash('Employee not found!', 'error')
             return redirect(url_for('employee_dashboard'))
         
-        # Get order statistics
-        cursor.execute("""
-            SELECT 
-                COUNT(DISTINCT o.OrderID) as total_orders_handled,
-                SUM(op.Quantity * op.PricePerUnit) as total_sales,
-                COUNT(DISTINCT CASE WHEN o.Status = 'Pending' THEN o.OrderID END) as pending_orders,
-                COUNT(DISTINCT CASE WHEN o.Status = 'Completed' THEN o.OrderID END) as completed_orders
-            FROM Orders o
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
-            WHERE o.EmployeeID = %s
-        """, (employee_id,))
-        stats = cursor.fetchone()
-        # Handle NULL total_sales
+        if employee.get('Position') == 'Delivery Staff':
+            cursor.execute("""
+                SELECT 
+                    COUNT(DISTINCT d.OrderID) as total_orders_handled,
+                    SUM(op.Quantity * op.PricePerUnit) as total_sales,
+                    (
+                        SELECT COUNT(DISTINCT d2.OrderID)
+                        FROM Delivery d2
+                        JOIN Orders o2 ON d2.OrderID = o2.OrderID
+                        WHERE d2.EmployeeID = %s AND o2.Status IN ('Ready to Deliver', 'Scheduled for Delivery')
+                    ) as pending_orders,
+                    (
+                        SELECT COUNT(DISTINCT d3.OrderID)
+                        FROM Delivery d3
+                        JOIN Orders o3 ON d3.OrderID = o3.OrderID
+                        WHERE d3.EmployeeID = %s AND o3.Status = 'Completed'
+                    ) as completed_orders
+                FROM Delivery d
+                JOIN Orders o ON d.OrderID = o.OrderID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE d.EmployeeID = %s
+            """, (employee_id, employee_id, employee_id))
+            stats = cursor.fetchone()
+        else:
+            cursor.execute("""
+                SELECT 
+                    COUNT(DISTINCT o.OrderID) as total_orders_handled,
+                    SUM(op.Quantity * op.PricePerUnit) as total_sales,
+                    (
+                        SELECT COUNT(DISTINCT o2.OrderID)
+                        FROM Orders o2
+                        WHERE o2.EmployeeID = %s AND o2.Status = 'Pending'
+                    ) as pending_orders,
+                    (
+                        SELECT COUNT(DISTINCT o3.OrderID)
+                        FROM Orders o3
+                        WHERE o3.EmployeeID = %s AND o3.Status = 'Completed'
+                    ) as completed_orders
+                FROM Orders o
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE o.EmployeeID = %s
+            """, (employee_id, employee_id, employee_id))
+            stats = cursor.fetchone()
+        
         if stats and stats.get('total_sales') is None:
             stats['total_sales'] = 0
         
-        # Get recent orders handled
         cursor.execute("""
-            SELECT o.OrderID, o.OrderDate, o.Status,
-                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
-                   c.FirstName, c.LastName
-            FROM Orders o
-            JOIN Customers c ON o.CustomerID = c.CustomerID
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
-            WHERE o.EmployeeID = %s
-            GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
-            ORDER BY o.OrderDate DESC
-            LIMIT 5
+            SELECT COUNT(*) as received_purchases, SUM(TotalCost) as total_received_cost
+            FROM Purchases
+            WHERE ReceivedBy = %s
         """, (employee_id,))
+        purchase_stats = cursor.fetchone()
+        stats['received_purchases'] = purchase_stats.get('received_purchases', 0) if purchase_stats else 0
+        stats['total_received_cost'] = purchase_stats.get('total_received_cost') or 0
+        
+        if employee.get('Position') == 'Delivery Staff':
+            cursor.execute("""
+                SELECT o.OrderID, o.OrderDate, o.Status,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
+                       c.FirstName, c.LastName
+                FROM Delivery d
+                JOIN Orders o ON d.OrderID = o.OrderID
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE d.EmployeeID = %s
+                GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
+                ORDER BY o.OrderDate DESC
+                LIMIT 5
+            """, (employee_id,))
+        else:
+            cursor.execute("""
+                SELECT o.OrderID, o.OrderDate, o.Status,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
+                       c.FirstName, c.LastName
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE o.EmployeeID = %s
+                GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
+                ORDER BY o.OrderDate DESC
+                LIMIT 5
+            """, (employee_id,))
+        
         recent_orders = cursor.fetchall()
-        # Handle NULL TotalAmount
         for order in recent_orders:
             if order.get('TotalAmount') is None:
                 order['TotalAmount'] = 0
@@ -1066,9 +1179,8 @@ def products():
         query = """
             SELECT p.ProductID, p.ProductName, p.Dimensions, p.Color, p.Material,
                    p.SellingPrice, p.StockQuantity, p.DateAdded,
-                   c.CategoryName, s.SupplierName
+                   p.CategoryName, s.SupplierName
             FROM Products p
-            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
             LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
             WHERE 1=1
         """
@@ -1079,7 +1191,7 @@ def products():
             params.extend([f'%{search}%', f'%{search}%'])
         
         if category:
-            query += " AND c.CategoryID = %s"
+            query += " AND p.CategoryName = %s"
             params.append(category)
         
         query += " ORDER BY p.ProductName"
@@ -1087,7 +1199,12 @@ def products():
         cursor.execute(query, params)
         products = cursor.fetchall()
         
-        cursor.execute("SELECT CategoryID, CategoryName FROM Categories ORDER BY CategoryName")
+        cursor.execute("""
+            SELECT DISTINCT CategoryName
+            FROM Products
+            WHERE CategoryName IS NOT NULL AND CategoryName <> ''
+            ORDER BY CategoryName
+        """)
         categories = cursor.fetchall()
         
     except Error as e:
@@ -1115,7 +1232,7 @@ def add_product():
         try:
             cursor.execute("""
                 INSERT INTO Products (ProductName, Dimensions, Color, Material, SellingPrice,
-                                   StockQuantity, CategoryID, SupplierID, DateAdded)
+                                   StockQuantity, CategoryName, SupplierID, DateAdded)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 request.form['product_name'],
@@ -1124,7 +1241,7 @@ def add_product():
                 request.form['material'],
                 float(request.form['selling_price']),
                 int(request.form['stock_quantity']),
-                int(request.form['category_id']) if request.form['category_id'] else None,
+                request.form.get('category_name') or None,
                 int(request.form['supplier_id']) if request.form['supplier_id'] else None,
                 datetime.now().date()
             ))
@@ -1144,7 +1261,12 @@ def add_product():
     suppliers = []
     
     try:
-        cursor.execute("SELECT CategoryID, CategoryName FROM Categories ORDER BY CategoryName")
+        cursor.execute("""
+            SELECT DISTINCT CategoryName
+            FROM Products
+            WHERE CategoryName IS NOT NULL AND CategoryName <> ''
+            ORDER BY CategoryName
+        """)
         categories = cursor.fetchall()
         cursor.execute("SELECT SupplierID, SupplierName FROM Suppliers ORDER BY SupplierName")
         suppliers = cursor.fetchall()
@@ -1173,7 +1295,7 @@ def update_product(product_id):
             cursor.execute("""
                 UPDATE Products
                 SET ProductName = %s, Dimensions = %s, Color = %s, Material = %s,
-                    SellingPrice = %s, StockQuantity = %s, CategoryID = %s, SupplierID = %s
+                    SellingPrice = %s, StockQuantity = %s, CategoryName = %s, SupplierID = %s
                 WHERE ProductID = %s
             """, (
                 request.form['product_name'],
@@ -1182,7 +1304,7 @@ def update_product(product_id):
                 request.form['material'],
                 float(request.form['selling_price']),
                 int(request.form['stock_quantity']),
-                int(request.form['category_id']) if request.form['category_id'] else None,
+                request.form.get('category_name') or None,
                 int(request.form['supplier_id']) if request.form['supplier_id'] else None,
                 product_id
             ))
@@ -1207,7 +1329,12 @@ def update_product(product_id):
             flash('Product not found!', 'error')
             return redirect(url_for('products'))
         
-        cursor.execute("SELECT CategoryID, CategoryName FROM Categories ORDER BY CategoryName")
+        cursor.execute("""
+            SELECT DISTINCT CategoryName
+            FROM Products
+            WHERE CategoryName IS NOT NULL AND CategoryName <> ''
+            ORDER BY CategoryName
+        """)
         categories = cursor.fetchall()
         cursor.execute("SELECT SupplierID, SupplierName FROM Suppliers ORDER BY SupplierName")
         suppliers = cursor.fetchall()
@@ -1558,14 +1685,13 @@ def inventory():
     try:
         cursor.execute("""
             SELECT p.ProductID, p.ProductName, p.StockQuantity, p.SellingPrice,
-                   c.CategoryName, s.SupplierName,
+                   p.CategoryName, s.SupplierName,
                    CASE 
                        WHEN p.StockQuantity < 10 THEN 'Low'
                        WHEN p.StockQuantity < 20 THEN 'Medium'
                        ELSE 'Good'
                    END as StockStatus
             FROM Products p
-            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
             LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
             ORDER BY p.StockQuantity ASC, p.ProductName
         """)
@@ -1613,33 +1739,68 @@ def reports():
         reports['top_products'] = cursor.fetchall()
         
         cursor.execute("""
-            SELECT c.CategoryName, SUM(op.Quantity * op.PricePerUnit) as TotalRevenue,
+            SELECT p.CategoryName, SUM(op.Quantity * op.PricePerUnit) as TotalRevenue,
                    SUM(op.Quantity) as TotalItems
             FROM Order_Product op
             JOIN Products p ON op.ProductID = p.ProductID
-            JOIN Categories c ON p.CategoryID = c.CategoryID
             JOIN Orders o ON op.OrderID = o.OrderID
             WHERE o.Status = 'Completed'
-            GROUP BY c.CategoryID, c.CategoryName
+            GROUP BY p.CategoryName
             ORDER BY TotalRevenue DESC
         """)
         reports['sales_by_category'] = cursor.fetchall()
         
         cursor.execute("""
-            SELECT e.FirstName, e.LastName, COUNT(DISTINCT o.OrderID) as OrderCount,
-                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
+            SELECT e.EmployeeID, e.FirstName, e.LastName,
+                   sales.OrderCount as OrderCount,
+                   sales.TotalSales as TotalSales,
+                   deliv.DeliveredOrders as DeliveredOrders,
+                   deliv.DeliveredValue as DeliveredValue,
+                   purch.ReceivedPurchases as ReceivedPurchases,
+                   purch.TotalReceivedCost as TotalReceivedCost
             FROM Employees e
-            LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
-            WHERE e.Position = 'Sales Associate'
-            GROUP BY e.EmployeeID, e.FirstName, e.LastName
+            LEFT JOIN (
+                SELECT o.EmployeeID,
+                       COUNT(DISTINCT o.OrderID) as OrderCount,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalSales
+                FROM Orders o
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                GROUP BY o.EmployeeID
+            ) sales ON e.EmployeeID = sales.EmployeeID
+            LEFT JOIN (
+                SELECT d.EmployeeID,
+                       COUNT(DISTINCT d.OrderID) as DeliveredOrders,
+                       SUM(op.Quantity * op.PricePerUnit) as DeliveredValue
+                FROM Delivery d
+                JOIN Orders o ON d.OrderID = o.OrderID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE o.Status = 'Completed'
+                GROUP BY d.EmployeeID
+            ) deliv ON e.EmployeeID = deliv.EmployeeID
+            LEFT JOIN (
+                SELECT ReceivedBy as EmployeeID,
+                       COUNT(*) as ReceivedPurchases,
+                       SUM(TotalCost) as TotalReceivedCost
+                FROM Purchases
+                WHERE ReceivedBy IS NOT NULL
+                GROUP BY ReceivedBy
+            ) purch ON e.EmployeeID = purch.EmployeeID
             ORDER BY TotalSales DESC
         """)
         employee_perf = cursor.fetchall()
-        # Handle NULL TotalSales
         for emp in employee_perf:
+            if emp.get('OrderCount') is None:
+                emp['OrderCount'] = 0
             if emp.get('TotalSales') is None:
                 emp['TotalSales'] = 0
+            if emp.get('DeliveredOrders') is None:
+                emp['DeliveredOrders'] = 0
+            if emp.get('DeliveredValue') is None:
+                emp['DeliveredValue'] = 0
+            if emp.get('ReceivedPurchases') is None:
+                emp['ReceivedPurchases'] = 0
+            if emp.get('TotalReceivedCost') is None:
+                emp['TotalReceivedCost'] = 0
         reports['employee_performance'] = employee_perf
         
         cursor.execute("""
@@ -1934,18 +2095,31 @@ def supplier_details(supplier_id):
             flash('Supplier not found!', 'error')
             return redirect(url_for('suppliers'))
         
-        # Get products from this supplier
+        # Get products from this supplier with purchase info
         cursor.execute("""
             SELECT p.ProductID, p.ProductName, p.SellingPrice, p.StockQuantity, 
                    p.Color, p.Material, p.Dimensions, p.DateAdded,
-                   c.CategoryName
+                   p.CategoryName,
+                   MAX(pr.PurchaseDate) as LastPurchaseDate
             FROM Products p
-            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+            LEFT JOIN Purchase_Product pp ON p.ProductID = pp.ProductID
+            LEFT JOIN Purchases pr ON pp.PurchaseID = pr.PurchaseID
             WHERE p.SupplierID = %s
+            GROUP BY p.ProductID, p.ProductName, p.SellingPrice, p.StockQuantity, 
+                     p.Color, p.Material, p.Dimensions, p.DateAdded, p.CategoryName
             ORDER BY p.ProductName
         """, (supplier_id,))
         products = cursor.fetchall()
-        
+
+        # Purchase stats for this supplier
+        cursor.execute("""
+            SELECT COUNT(DISTINCT p.PurchaseID) as PurchaseCount,
+                   MAX(p.PurchaseDate) as LastPurchaseDate
+            FROM Purchases p
+            WHERE p.SupplierID = %s
+        """, (supplier_id,))
+        purchase_stats = cursor.fetchone()
+
     except Error as e:
         flash(f'Error fetching supplier details: {e}', 'error')
         return redirect(url_for('suppliers'))
@@ -1954,7 +2128,8 @@ def supplier_details(supplier_id):
         conn.close()
     
     is_manager = session.get('role') == 'manager'
-    return render_template('supplier_details.html', supplier=supplier, products=products, is_manager=is_manager)
+    return render_template('supplier_details.html', supplier=supplier, products=products,
+                         purchase_stats=purchase_stats, is_manager=is_manager)
 
 @app.route('/suppliers/add', methods=['GET', 'POST'])
 @login_required
@@ -2100,6 +2275,438 @@ def delete_supplier(supplier_id):
     
     return redirect(url_for('suppliers'))
 
+# ==================== PURCHASES MANAGEMENT ====================
+
+@app.route('/purchases')
+@login_required
+@role_required('employee', 'manager')
+def purchases():
+    """Display all purchases"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return render_template('purchases.html', purchases=[], is_manager=False)
+    
+    cursor = conn.cursor(dictionary=True)
+    status_filter = request.args.get('status', '')
+    search = request.args.get('search', '')
+    
+    try:
+        query = """
+            SELECT p.PurchaseID, p.PurchaseDate, p.TotalCost, p.ReceivedBy,
+                   s.SupplierName,
+                   e.FirstName as ReceivedByFirstName, e.LastName as ReceivedByLastName,
+                   COUNT(pp.PurchaseDetailID) as ItemCount
+            FROM Purchases p
+            LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
+            LEFT JOIN Employees e ON p.ReceivedBy = e.EmployeeID
+            LEFT JOIN Purchase_Product pp ON p.PurchaseID = pp.PurchaseID
+            WHERE 1=1
+        """
+        params = []
+        
+        if status_filter == 'pending':
+            query += " AND p.ReceivedBy IS NULL"
+        elif status_filter == 'received':
+            query += " AND p.ReceivedBy IS NOT NULL"
+        
+        if search:
+            query += " AND (p.PurchaseID LIKE %s OR s.SupplierName LIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%'])
+        
+        query += """
+            GROUP BY p.PurchaseID, p.PurchaseDate, p.TotalCost, p.ReceivedBy,
+                     s.SupplierName, e.FirstName, e.LastName
+            ORDER BY p.PurchaseDate DESC, p.PurchaseID DESC
+        """
+        
+        cursor.execute(query, params)
+        purchases = cursor.fetchall()
+        
+    except Error as e:
+        flash(f'Error fetching purchases: {e}', 'error')
+        purchases = []
+    finally:
+        cursor.close()
+        conn.close()
+    
+    is_manager = session.get('role') == 'manager'
+    return render_template('purchases.html', purchases=purchases, is_manager=is_manager,
+                         status_filter=status_filter, search=search)
+
+@app.route('/purchases/<int:purchase_id>')
+@login_required
+@role_required('employee', 'manager')
+def purchase_details(purchase_id):
+    """View purchase details"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('purchases'))
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("""
+            SELECT p.*, s.SupplierName,
+                   e.FirstName as ReceivedByFirstName, e.LastName as ReceivedByLastName
+            FROM Purchases p
+            LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
+            LEFT JOIN Employees e ON p.ReceivedBy = e.EmployeeID
+            WHERE p.PurchaseID = %s
+        """, (purchase_id,))
+        purchase = cursor.fetchone()
+        
+        if not purchase:
+            flash('Purchase not found!', 'error')
+            return redirect(url_for('purchases'))
+        
+        cursor.execute("""
+            SELECT pp.PurchaseDetailID, pp.ProductID, pp.QuantityPurchased, pp.CostPerUnit,
+                   pr.ProductName
+            FROM Purchase_Product pp
+            JOIN Products pr ON pp.ProductID = pr.ProductID
+            WHERE pp.PurchaseID = %s
+            ORDER BY pr.ProductName
+        """, (purchase_id,))
+        items = cursor.fetchall()
+        
+    except Error as e:
+        flash(f'Error loading purchase: {e}', 'error')
+        return redirect(url_for('purchases'))
+    finally:
+        cursor.close()
+        conn.close()
+    
+    can_confirm = purchase.get('ReceivedBy') is None and session.get('role') in ['employee', 'manager']
+    is_manager = session.get('role') == 'manager'
+    return render_template('purchase_details.html', purchase=purchase, items=items,
+                         can_confirm=can_confirm, is_manager=is_manager)
+
+@app.route('/purchases/add', methods=['GET', 'POST'])
+@login_required
+@role_required('manager')
+def add_purchase():
+    """Add a new purchase (Manager only)"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('purchases'))
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    if request.method == 'POST':
+        supplier_id = request.form.get('supplier_id')
+        purchase_date = request.form.get('purchase_date') or datetime.now().date().strftime('%Y-%m-%d')
+        items, error_msg = parse_purchase_items(request.form)
+        
+        if not supplier_id:
+            flash('Supplier is required!', 'error')
+            return redirect(url_for('add_purchase'))
+        
+        is_valid, date_error = validate_date(purchase_date, 'Purchase date', allow_future=False)
+        if not is_valid:
+            flash(date_error, 'error')
+            return redirect(url_for('add_purchase'))
+        
+        if error_msg:
+            flash(error_msg, 'error')
+            return redirect(url_for('add_purchase'))
+        
+        try:
+            cursor.execute("""
+                SELECT ProductID, SupplierID, SellingPrice
+                FROM Products
+            """)
+            product_rows = cursor.fetchall()
+            product_map = {row['ProductID']: row for row in product_rows}
+            
+            supplier_id = int(supplier_id)
+            total_cost = 0
+            for item in items:
+                product = product_map.get(item['product_id'])
+                if not product:
+                    flash('Invalid product selected!', 'error')
+                    return redirect(url_for('add_purchase'))
+                
+                if supplier_id != product['SupplierID']:
+                    flash('All items in a purchase must be from the same supplier.', 'error')
+                    return redirect(url_for('add_purchase'))
+                
+                total_cost += item['quantity'] * (product['SellingPrice'] or 0)
+            
+            if supplier_id is None:
+                flash('Products must have a supplier assigned.', 'error')
+                return redirect(url_for('add_purchase'))
+            
+            cursor.execute("""
+                INSERT INTO Purchases (SupplierID, PurchaseDate, TotalCost, ReceivedBy)
+                VALUES (%s, %s, %s, NULL)
+            """, (supplier_id, purchase_date, total_cost))
+            purchase_id = cursor.lastrowid
+            
+            for item in items:
+                product = product_map[item['product_id']]
+                cost_per_unit = product['SellingPrice'] or 0
+                cursor.execute("""
+                    INSERT INTO Purchase_Product (PurchaseID, ProductID, QuantityPurchased, CostPerUnit)
+                    VALUES (%s, %s, %s, %s)
+                """, (purchase_id, item['product_id'], item['quantity'], cost_per_unit))
+            
+            conn.commit()
+            flash('Purchase created successfully!', 'success')
+            return redirect(url_for('purchase_details', purchase_id=purchase_id))
+        except Error as e:
+            flash(f'Error creating purchase: {e}', 'error')
+            conn.rollback()
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return redirect(url_for('add_purchase'))
+    
+    try:
+        cursor.execute("SELECT SupplierID, SupplierName FROM Suppliers ORDER BY SupplierName")
+        suppliers = cursor.fetchall()
+        cursor.execute("""
+            SELECT p.ProductID, p.ProductName, p.SupplierID, s.SupplierName
+            FROM Products p
+            LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
+            ORDER BY p.ProductName
+        """)
+        products = cursor.fetchall()
+    except Error as e:
+        flash(f'Error loading form data: {e}', 'error')
+        suppliers = []
+        products = []
+    finally:
+        cursor.close()
+        conn.close()
+    
+    today = datetime.now().date().strftime('%Y-%m-%d')
+    return render_template('add_purchase.html', suppliers=suppliers, products=products, today=today)
+
+@app.route('/purchases/<int:purchase_id>/update', methods=['GET', 'POST'])
+@login_required
+@role_required('manager')
+def update_purchase(purchase_id):
+    """Update a purchase (Manager only)"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('purchases'))
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    if request.method == 'POST':
+        supplier_id = request.form.get('supplier_id')
+        purchase_date = request.form.get('purchase_date') or datetime.now().date().strftime('%Y-%m-%d')
+        items, error_msg = parse_purchase_items(request.form)
+        
+        if not supplier_id:
+            flash('Supplier is required!', 'error')
+            return redirect(url_for('update_purchase', purchase_id=purchase_id))
+        
+        is_valid, date_error = validate_date(purchase_date, 'Purchase date', allow_future=False)
+        if not is_valid:
+            flash(date_error, 'error')
+            return redirect(url_for('update_purchase', purchase_id=purchase_id))
+        
+        if error_msg:
+            flash(error_msg, 'error')
+            return redirect(url_for('update_purchase', purchase_id=purchase_id))
+        
+        try:
+            cursor.execute("SELECT ReceivedBy FROM Purchases WHERE PurchaseID = %s", (purchase_id,))
+            purchase = cursor.fetchone()
+            if not purchase:
+                flash('Purchase not found!', 'error')
+                return redirect(url_for('purchases'))
+            if purchase.get('ReceivedBy'):
+                flash('Cannot edit a purchase that has been received.', 'error')
+                return redirect(url_for('purchase_details', purchase_id=purchase_id))
+            
+            cursor.execute("""
+                SELECT ProductID, SupplierID, SellingPrice
+                FROM Products
+            """)
+            product_rows = cursor.fetchall()
+            product_map = {row['ProductID']: row for row in product_rows}
+            
+            supplier_id = int(supplier_id)
+            total_cost = 0
+            for item in items:
+                product = product_map.get(item['product_id'])
+                if not product:
+                    flash('Invalid product selected!', 'error')
+                    return redirect(url_for('update_purchase', purchase_id=purchase_id))
+                
+                if supplier_id != product['SupplierID']:
+                    flash('All items in a purchase must be from the same supplier.', 'error')
+                    return redirect(url_for('update_purchase', purchase_id=purchase_id))
+                
+                total_cost += item['quantity'] * (product['SellingPrice'] or 0)
+            
+            if supplier_id is None:
+                flash('Products must have a supplier assigned.', 'error')
+                return redirect(url_for('update_purchase', purchase_id=purchase_id))
+            
+            cursor.execute("""
+                UPDATE Purchases
+                SET SupplierID = %s, PurchaseDate = %s, TotalCost = %s
+                WHERE PurchaseID = %s
+            """, (supplier_id, purchase_date, total_cost, purchase_id))
+            
+            cursor.execute("DELETE FROM Purchase_Product WHERE PurchaseID = %s", (purchase_id,))
+            for item in items:
+                product = product_map[item['product_id']]
+                cost_per_unit = product['SellingPrice'] or 0
+                cursor.execute("""
+                    INSERT INTO Purchase_Product (PurchaseID, ProductID, QuantityPurchased, CostPerUnit)
+                    VALUES (%s, %s, %s, %s)
+                """, (purchase_id, item['product_id'], item['quantity'], cost_per_unit))
+            
+            conn.commit()
+            flash('Purchase updated successfully!', 'success')
+            return redirect(url_for('purchase_details', purchase_id=purchase_id))
+        except Error as e:
+            flash(f'Error updating purchase: {e}', 'error')
+            conn.rollback()
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return redirect(url_for('update_purchase', purchase_id=purchase_id))
+    
+    try:
+        cursor.execute("""
+            SELECT p.*, s.SupplierName
+            FROM Purchases p
+            LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
+            WHERE p.PurchaseID = %s
+        """, (purchase_id,))
+        purchase = cursor.fetchone()
+        if not purchase:
+            flash('Purchase not found!', 'error')
+            return redirect(url_for('purchases'))
+        if purchase.get('ReceivedBy'):
+            flash('Cannot edit a purchase that has been received.', 'error')
+            return redirect(url_for('purchase_details', purchase_id=purchase_id))
+        
+        cursor.execute("""
+            SELECT pp.ProductID, pp.QuantityPurchased, pp.CostPerUnit
+            FROM Purchase_Product pp
+            WHERE pp.PurchaseID = %s
+        """, (purchase_id,))
+        items = cursor.fetchall()
+        
+        cursor.execute("SELECT SupplierID, SupplierName FROM Suppliers ORDER BY SupplierName")
+        suppliers = cursor.fetchall()
+        cursor.execute("""
+            SELECT p.ProductID, p.ProductName, p.SupplierID, s.SupplierName
+            FROM Products p
+            LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID
+            ORDER BY p.ProductName
+        """)
+        products = cursor.fetchall()
+    except Error as e:
+        flash(f'Error loading purchase: {e}', 'error')
+        return redirect(url_for('purchases'))
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('update_purchase.html', purchase=purchase, items=items,
+                         suppliers=suppliers, products=products)
+
+@app.route('/purchases/<int:purchase_id>/delete', methods=['POST'])
+@login_required
+@role_required('manager')
+def delete_purchase(purchase_id):
+    """Delete a purchase (Manager only)"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('purchases'))
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("SELECT ReceivedBy FROM Purchases WHERE PurchaseID = %s", (purchase_id,))
+        purchase = cursor.fetchone()
+        if not purchase:
+            flash('Purchase not found!', 'error')
+            return redirect(url_for('purchases'))
+        if purchase.get('ReceivedBy'):
+            flash('Cannot delete a purchase that has been received.', 'error')
+            return redirect(url_for('purchase_details', purchase_id=purchase_id))
+        
+        cursor.execute("DELETE FROM Purchases WHERE PurchaseID = %s", (purchase_id,))
+        conn.commit()
+        flash('Purchase deleted successfully!', 'success')
+    except Error as e:
+        flash(f'Error deleting purchase: {e}', 'error')
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('purchases'))
+
+@app.route('/purchases/<int:purchase_id>/receive', methods=['POST'])
+@login_required
+@role_required('employee', 'manager')
+def receive_purchase(purchase_id):
+    """Confirm a purchase as received and update stock"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('purchases'))
+    
+    cursor = conn.cursor(dictionary=True)
+    employee_id = session.get('user_id')
+    
+    try:
+        cursor.execute("SELECT ReceivedBy FROM Purchases WHERE PurchaseID = %s", (purchase_id,))
+        purchase = cursor.fetchone()
+        if not purchase:
+            flash('Purchase not found!', 'error')
+            return redirect(url_for('purchases'))
+        if purchase.get('ReceivedBy'):
+            flash('This purchase has already been received.', 'error')
+            return redirect(url_for('purchase_details', purchase_id=purchase_id))
+        
+        cursor.execute("""
+            SELECT ProductID, QuantityPurchased
+            FROM Purchase_Product
+            WHERE PurchaseID = %s
+        """, (purchase_id,))
+        items = cursor.fetchall()
+        
+        for item in items:
+            cursor.execute("""
+                UPDATE Products
+                SET StockQuantity = StockQuantity + %s
+                WHERE ProductID = %s
+            """, (item['QuantityPurchased'], item['ProductID']))
+        
+        cursor.execute("""
+            UPDATE Purchases
+            SET ReceivedBy = %s
+            WHERE PurchaseID = %s
+        """, (employee_id, purchase_id))
+        
+        conn.commit()
+        flash('Purchase marked as received and stock updated.', 'success')
+    except Error as e:
+        flash(f'Error receiving purchase: {e}', 'error')
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('purchase_details', purchase_id=purchase_id))
+
 # ==================== EMPLOYEE MANAGEMENT (MANAGER ONLY) ====================
 
 @app.route('/employees')
@@ -2162,41 +2769,64 @@ def employee_details(employee_id):
     cursor = conn.cursor(dictionary=True)
     
     try:
-        # Get employee information with statistics
-        cursor.execute("""
-            SELECT e.*, 
-                   COUNT(DISTINCT o.OrderID) as OrderCount,
-                   SUM(op.Quantity * op.PricePerUnit) as TotalSales
-            FROM Employees e
-            LEFT JOIN Orders o ON e.EmployeeID = o.EmployeeID
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
-            WHERE e.EmployeeID = %s
-            GROUP BY e.EmployeeID, e.FirstName, e.LastName, e.Position, e.HireDate, e.Salary, e.PhoneNumber, e.Email
-        """, (employee_id,))
+        cursor.execute("SELECT * FROM Employees WHERE EmployeeID = %s", (employee_id,))
         employee = cursor.fetchone()
         
         if not employee:
             flash('Employee not found!', 'error')
             return redirect(url_for('employees'))
         
-        # Handle NULL TotalSales
-        if employee.get('TotalSales') is None:
-            employee['TotalSales'] = 0
+        if employee.get('Position') == 'Delivery Staff':
+            cursor.execute("""
+                SELECT COUNT(DISTINCT d.OrderID) as OrderCount,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalSales
+                FROM Delivery d
+                JOIN Orders o ON d.OrderID = o.OrderID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE d.EmployeeID = %s
+            """, (employee_id,))
+            stats = cursor.fetchone()
+            
+            cursor.execute("""
+                SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalAmount
+                FROM Delivery d
+                JOIN Orders o ON d.OrderID = o.OrderID
+                LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE d.EmployeeID = %s
+                GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
+                         c.FirstName, c.LastName, c.Email, c.PhoneNumber
+                ORDER BY o.OrderDate DESC
+                LIMIT 10
+            """, (employee_id,))
+            orders = cursor.fetchall()
+        else:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT o.OrderID) as OrderCount,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalSales
+                FROM Orders o
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE o.EmployeeID = %s
+            """, (employee_id,))
+            stats = cursor.fetchone()
+            
+            cursor.execute("""
+                SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalAmount
+                FROM Orders o
+                LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+                WHERE o.EmployeeID = %s
+                GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
+                         c.FirstName, c.LastName, c.Email, c.PhoneNumber
+                ORDER BY o.OrderDate DESC
+                LIMIT 10
+            """, (employee_id,))
+            orders = cursor.fetchall()
         
-        # Get orders handled by this employee
-        cursor.execute("""
-            SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
-                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount
-            FROM Orders o
-            LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
-            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
-            WHERE o.EmployeeID = %s
-            GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
-                     c.FirstName, c.LastName, c.Email, c.PhoneNumber
-            ORDER BY o.OrderDate DESC
-            LIMIT 10
-        """, (employee_id,))
-        orders = cursor.fetchall()
+        employee['OrderCount'] = stats.get('OrderCount') if stats else 0
+        employee['TotalSales'] = stats.get('TotalSales') or 0
         # Handle NULL TotalAmount
         for order in orders:
             if order.get('TotalAmount') is None:
@@ -2536,9 +3166,8 @@ def create_order():
         
         # Get products with stock > 0
         cursor.execute("""
-            SELECT p.*, c.CategoryName 
+            SELECT p.*
             FROM Products p
-            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
             WHERE p.StockQuantity > 0
             ORDER BY p.ProductName
         """)
@@ -2579,7 +3208,7 @@ def delivery_dashboard():
             SELECT DISTINCT o.OrderID, o.OrderDate, o.Status as OrderStatus,
                    SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
                    c.FirstName, c.LastName, c.PhoneNumber, c.Email,
-                   d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
+                   d.OrderID as DeliveryOrderID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
                    d.EmployeeID as AssignedEmployeeID
             FROM Orders o
             LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
@@ -2587,7 +3216,7 @@ def delivery_dashboard():
             LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE o.Status = 'Ready to Deliver'
             GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName, c.PhoneNumber, c.Email,
-                     d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, d.EmployeeID
+                     d.OrderID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, d.EmployeeID
             ORDER BY o.OrderDate DESC
         """)
         available_orders = cursor.fetchall()
@@ -2606,12 +3235,11 @@ def delivery_dashboard():
             LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
             LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
             WHERE d.EmployeeID = %s AND o.Status IN ('Ready to Deliver', 'Scheduled for Delivery')
-            GROUP BY d.DeliveryID, o.OrderDate, o.Status, c.FirstName, c.LastName, c.PhoneNumber, c.Email,
-                     d.OrderID, d.EmployeeID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate
+            GROUP BY d.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName, c.PhoneNumber, c.Email,
+                     d.EmployeeID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate
             ORDER BY d.ScheduledDate DESC
         """, (employee_id,))
         my_deliveries = cursor.fetchall()
-        # Handle NULL TotalAmount
         for delivery in my_deliveries:
             if delivery.get('TotalAmount') is None:
                 delivery['TotalAmount'] = 0
@@ -2652,7 +3280,7 @@ def delivery_order_details(order_id):
         # Get order details
         cursor.execute("""
             SELECT o.*, c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address as CustomerAddress,
-                   d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
+                   d.OrderID as DeliveryOrderID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, 
                    d.EmployeeID as AssignedEmployeeID,
                    SUM(op.Quantity * op.PricePerUnit) as TotalAmount
             FROM Orders o
@@ -2662,7 +3290,7 @@ def delivery_order_details(order_id):
             WHERE o.OrderID = %s
             GROUP BY o.OrderID, o.CustomerID, o.EmployeeID, o.OrderDate, o.Status,
                      c.FirstName, c.LastName, c.Email, c.PhoneNumber, c.Address,
-                     d.DeliveryID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, d.EmployeeID
+                     d.OrderID, d.DeliveryAddress, d.ScheduledDate, d.DeliveryDate, d.EmployeeID
         """, (order_id,))
         order = cursor.fetchone()
         
@@ -2720,7 +3348,7 @@ def delivery_take_order(order_id):
             return redirect(url_for('delivery_order_details', order_id=order_id))
         
         # Check if delivery record exists
-        cursor.execute("SELECT DeliveryID, EmployeeID FROM Delivery WHERE OrderID = %s", (order_id,))
+        cursor.execute("SELECT OrderID, EmployeeID FROM Delivery WHERE OrderID = %s", (order_id,))
         delivery = cursor.fetchone()
         
         if delivery:
@@ -2731,7 +3359,6 @@ def delivery_take_order(order_id):
                     SET EmployeeID = %s
                     WHERE OrderID = %s
                 """, (employee_id, order_id))
-                delivery_id = delivery['DeliveryID']
             else:
                 flash('This order is already assigned to another delivery staff member!', 'error')
                 return redirect(url_for('delivery_order_details', order_id=order_id))
@@ -2751,14 +3378,6 @@ def delivery_take_order(order_id):
                 INSERT INTO Delivery (OrderID, EmployeeID, DeliveryAddress, ScheduledDate)
                 VALUES (%s, %s, %s, %s)
             """, (order_id, employee_id, delivery_address, datetime.now().date()))
-            delivery_id = cursor.lastrowid
-        
-        # Also add to Delivery_Employee junction table
-        cursor.execute("""
-            INSERT INTO Delivery_Employee (DeliveryID, EmployeeID)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE DeliveryID = DeliveryID
-        """, (delivery_id, employee_id))
         
         # Update order status to "Scheduled for Delivery" when delivery staff takes it
         cursor.execute("""
@@ -2802,7 +3421,7 @@ def delivery_update_order(order_id):
         # For "Scheduled for Delivery", date must be today or future
         if delivery_date:
             # First check basic date format
-            is_valid, error_msg = validate_date(delivery_date, 'Delivery date', allow_future=True)
+            is_valid, error_msg = validate_date(delivery_date, 'Delivery date', allow_future=False)
             if is_valid:
                 try:
                     date_obj = datetime.strptime(delivery_date.strip(), '%Y-%m-%d').date()
@@ -2833,7 +3452,7 @@ def delivery_update_order(order_id):
                 return redirect(url_for('delivery_order_details', order_id=order_id))
         
         # Get delivery record
-        cursor.execute("SELECT DeliveryID, EmployeeID FROM Delivery WHERE OrderID = %s", (order_id,))
+        cursor.execute("SELECT OrderID, EmployeeID FROM Delivery WHERE OrderID = %s", (order_id,))
         delivery = cursor.fetchone()
         
         if not delivery or delivery['EmployeeID'] != employee_id:

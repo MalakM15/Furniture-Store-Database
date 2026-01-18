@@ -108,6 +108,22 @@
                 <div class="stat-value">{{ "%.0f"|format(stats.total_sales or 0) }}<span style="font-size: 1rem;"> ₪</span></div>
                 <div class="stat-label">Total Sales</div>
             </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="package"></i>
+                </div>
+                <div class="stat-value">{{ stats.received_purchases or 0 }}</div>
+                <div class="stat-label">Purchases Received</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i data-lucide="clipboard-check"></i>
+                </div>
+                <div class="stat-value">{{ "%.0f"|format(stats.total_received_cost or 0) }}<span style="font-size: 1rem;"> ₪</span></div>
+                <div class="stat-label">Total Received Cost</div>
+            </div>
         </div>
     </div>
 </div>

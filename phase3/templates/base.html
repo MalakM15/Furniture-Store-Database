@@ -850,6 +850,10 @@
                     <i data-lucide="truck"></i>
                     <span>Suppliers</span>
                 </a>
+                <a href="{{ url_for('purchases') }}" class="nav-link {% if request.endpoint in ['purchases', 'add_purchase', 'update_purchase', 'purchase_details'] %}active{% endif %}">
+                    <i data-lucide="package"></i>
+                    <span>Purchases</span>
+                </a>
                 {% if session.get('role') == 'manager' %}
                 <a href="{{ url_for('inventory') }}" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}">
                     <i data-lucide="warehouse"></i>
