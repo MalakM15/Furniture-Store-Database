@@ -173,7 +173,6 @@
 </div>
 
 <!-- Payments -->
-{% if payments %}
 <div class="card fade-in" style="animation-delay: 0.3s;">
     <div class="card-header">
         <h3 class="card-title">
@@ -181,6 +180,7 @@
             Payment History
         </h3>
     </div>
+    {% if payments %}
     <div class="table-container">
         <table>
             <thead>
@@ -188,6 +188,7 @@
                     <th>Date</th>
                     <th>Method</th>
                     <th>Amount</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -198,13 +199,24 @@
                         <span class="badge badge-info">{{ payment.PaymentMethod }}</span>
                     </td>
                     <td style="font-weight: 600; color: var(--success);">{{ "%.2f"|format(payment.AmountPaid) }} ₪</td>
+                    <td>
+                        <a href="{{ url_for('customer_payment_details', payment_id=payment.PaymentID) }}" class="btn btn-secondary btn-sm">
+                            <i data-lucide="eye"></i>
+                            View
+                        </a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem;">
+        <i data-lucide="credit-card" style="width: 32px; height: 32px;"></i>
+        <p>No payments recorded</p>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Cancel Order Button (only if Pending or Processing) -->
 {% if order.Status in ['Pending', 'Processing'] %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Details - AMIN Furniture{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <a href="{{ url_for('customer_order_details', order_id=payment.OrderID) }}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back to Order
+        </a>
+        <h1>Payment Details</h1>
+        <p>Payment #{{ payment.PaymentID }} for Order #{{ payment.OrderID }}</p>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.1s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="credit-card" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Payment Data
+            </h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Payment Date</span>
+                <span class="info-value">{{ payment.PaymentDate.strftime('%b %d, %Y') if payment.PaymentDate else payment.PaymentDate }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Amount</span>
+                <span class="info-value" style="color: var(--success); font-weight: 600;">{{ "%.2f"|format(payment.AmountPaid) }} ₪</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Method</span>
+                <span class="info-value">
+                    <span class="badge badge-info">{{ payment.PaymentMethod }}</span>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Order Status</span>
+                <span class="info-value">{{ payment.Status }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="edit-3" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Edit Payment Method
+            </h3>
+        </div>
+        <form method="POST" action="{{ url_for('customer_payment_details', payment_id=payment.PaymentID) }}" style="padding: 0 1.5rem 1.5rem;">
+            <div class="form-group">
+                <label class="form-label">Payment Method</label>
+                <select name="method" class="form-control" required>
+                    <option value="">Select Method</option>
+                    <option value="Card" {% if payment.PaymentMethod == 'Card' %}selected{% endif %}>Credit/Debit Card</option>
+                    <option value="Bank Transfer" {% if payment.PaymentMethod == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
+                    <option value="E-payment" {% if payment.PaymentMethod == 'E-payment' %}selected{% endif %}>E-payment</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="save"></i>
+                Update Method
+            </button>
+        </form>
+        
+        <div style="padding: 0 1.5rem 1.5rem;">
+            <form method="POST" action="{{ url_for('customer_delete_payment', payment_id=payment.PaymentID) }}" onsubmit="return confirm('Deleting this payment will delete the entire order. Continue?');">
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="trash-2"></i>
+                    Delete Payment and Order
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

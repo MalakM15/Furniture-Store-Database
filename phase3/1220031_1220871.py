@@ -841,6 +841,226 @@ def customer_order_details(order_id):
     return render_template('customer/order_details.html', order=order, order_products=order_products,
                          payments=payments, delivery=delivery)
 
+@app.route('/customer/orders/<int:order_id>/payments/add', methods=['POST'])
+@login_required
+@role_required('customer')
+def customer_add_payment(order_id):
+    """Customer adds a payment for their order"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('customer_dashboard'))
+    
+    customer_id = session['user_id']
+    amount = request.form.get('amount', '').strip()
+    method = request.form.get('method', '').strip()
+    payment_date = request.form.get('payment_date', '').strip() or datetime.now().date()
+    
+    if not amount or not method:
+        flash('Payment amount and method are required.', 'error')
+        return redirect(url_for('customer_order_details', order_id=order_id))
+    
+    try:
+        amount_val = float(amount)
+        if amount_val <= 0:
+            raise ValueError
+    except ValueError:
+        flash('Payment amount must be a positive number.', 'error')
+        return redirect(url_for('customer_order_details', order_id=order_id))
+    
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT OrderID
+            FROM Orders
+            WHERE OrderID = %s AND CustomerID = %s
+        """, (order_id, customer_id))
+        order = cursor.fetchone()
+        if not order:
+            flash('Order not found or you do not have permission.', 'error')
+            return redirect(url_for('customer_dashboard'))
+        
+        cursor.execute("""
+            INSERT INTO Payments (OrderID, PaymentDate, AmountPaid, PaymentMethod)
+            VALUES (%s, %s, %s, %s)
+        """, (order_id, payment_date, amount_val, method))
+        conn.commit()
+        flash('Payment added successfully!', 'success')
+    except Error as e:
+        flash(f'Error adding payment: {e}', 'error')
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('customer_order_details', order_id=order_id))
+
+@app.route('/customer/payments/update', methods=['POST'])
+@login_required
+@role_required('customer')
+def customer_update_payment():
+    """Customer updates their payment details"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('customer_dashboard'))
+    
+    customer_id = session['user_id']
+    payment_id = request.form.get('payment_id', '').strip()
+    amount = request.form.get('amount', '').strip()
+    method = request.form.get('method', '').strip()
+    payment_date = request.form.get('payment_date', '').strip() or datetime.now().date()
+    
+    if not payment_id or not amount or not method:
+        flash('Payment, amount, and method are required.', 'error')
+        return redirect(url_for('customer_dashboard'))
+    
+    try:
+        payment_id_val = int(payment_id)
+        amount_val = float(amount)
+        if amount_val <= 0:
+            raise ValueError
+    except ValueError:
+        flash('Invalid payment or amount.', 'error')
+        return redirect(url_for('customer_dashboard'))
+    
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT p.PaymentID, p.OrderID
+            FROM Payments p
+            JOIN Orders o ON p.OrderID = o.OrderID
+            WHERE p.PaymentID = %s AND o.CustomerID = %s
+        """, (payment_id_val, customer_id))
+        payment = cursor.fetchone()
+        if not payment:
+            flash('Payment not found or you do not have permission.', 'error')
+            return redirect(url_for('customer_dashboard'))
+        
+        cursor.execute("""
+            UPDATE Payments
+            SET PaymentDate = %s, AmountPaid = %s, PaymentMethod = %s
+            WHERE PaymentID = %s
+        """, (payment_date, amount_val, method, payment_id_val))
+        conn.commit()
+        flash('Payment updated successfully!', 'success')
+        return redirect(url_for('customer_order_details', order_id=payment['OrderID']))
+    except Error as e:
+        flash(f'Error updating payment: {e}', 'error')
+        conn.rollback()
+        return redirect(url_for('customer_dashboard'))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/customer/payments/<int:payment_id>/delete', methods=['POST'])
+@login_required
+@role_required('customer')
+def customer_delete_payment(payment_id):
+    """Customer deletes a payment and the related order"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('customer_dashboard'))
+    
+    customer_id = session['user_id']
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT p.OrderID, o.Status
+            FROM Payments p
+            JOIN Orders o ON p.OrderID = o.OrderID
+            WHERE p.PaymentID = %s AND o.CustomerID = %s
+        """, (payment_id, customer_id))
+        payment = cursor.fetchone()
+        if not payment:
+            flash('Payment not found or you do not have permission.', 'error')
+            return redirect(url_for('customer_dashboard'))
+        
+        if payment['Status'] == 'Completed':
+            flash('Cannot delete payment for a completed order.', 'error')
+            return redirect(url_for('customer_order_details', order_id=payment['OrderID']))
+        
+        cursor.execute("""
+            SELECT ProductID, Quantity
+            FROM Order_Product
+            WHERE OrderID = %s
+        """, (payment['OrderID'],))
+        order_items = cursor.fetchall()
+        
+        for item in order_items:
+            cursor.execute("""
+                UPDATE Products
+                SET StockQuantity = StockQuantity + %s
+                WHERE ProductID = %s
+            """, (item['Quantity'], item['ProductID']))
+        
+        cursor.execute("""
+            DELETE FROM Orders
+            WHERE OrderID = %s AND CustomerID = %s
+        """, (payment['OrderID'], customer_id))
+        conn.commit()
+        flash('Payment deleted and order removed.', 'success')
+    except Error as e:
+        flash(f'Error deleting payment: {e}', 'error')
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('customer_dashboard'))
+
+@app.route('/customer/payments/<int:payment_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('customer')
+def customer_payment_details(payment_id):
+    """View and update a customer's payment details"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database connection failed!', 'error')
+        return redirect(url_for('customer_dashboard'))
+    
+    customer_id = session['user_id']
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("""
+            SELECT p.*, o.OrderID, o.Status
+            FROM Payments p
+            JOIN Orders o ON p.OrderID = o.OrderID
+            WHERE p.PaymentID = %s AND o.CustomerID = %s
+        """, (payment_id, customer_id))
+        payment = cursor.fetchone()
+        
+        if not payment:
+            flash('Payment not found or you do not have permission.', 'error')
+            return redirect(url_for('customer_dashboard'))
+        
+        if request.method == 'POST':
+            method = request.form.get('method', '').strip()
+            if not method:
+                flash('Payment method is required.', 'error')
+                return redirect(url_for('customer_payment_details', payment_id=payment_id))
+            
+            cursor.execute("""
+                UPDATE Payments
+                SET PaymentMethod = %s
+                WHERE PaymentID = %s
+            """, (method, payment_id))
+            conn.commit()
+            payment['PaymentMethod'] = method
+            flash('Payment method updated.', 'success')
+        
+    except Error as e:
+        flash(f'Error fetching payment: {e}', 'error')
+        conn.rollback()
+        return redirect(url_for('customer_dashboard'))
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('customer/payment_details.html', payment=payment)
+
 @app.route('/customer/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 @role_required('customer')
