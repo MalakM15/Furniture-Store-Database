@@ -36,6 +36,30 @@
     </form>
 </div>
 
+<!-- Top Customer -->
+<div class="card fade-in" style="animation-delay: 0.15s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="crown" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Top Customer
+        </h3>
+    </div>
+    {% if top_customer %}
+    <div style="padding: 1.5rem;">
+        <div style="font-weight: 600; font-size: 1.05rem;">{{ top_customer.FirstName }} {{ top_customer.LastName }}</div>
+        <div style="color: var(--text-muted); margin-top: 0.25rem;">{{ top_customer.Email or '—' }}</div>
+        <div style="margin-top: 0.75rem; font-weight: 600; color: var(--accent-gold);">
+            {{ "%.2f"|format(top_customer.TotalSpent or 0) }} ₪
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="crown"></i>
+        <p>No customer data available</p>
+    </div>
+    {% endif %}
+</div>
+
 {% if customers %}
 <!-- Customers Table -->
 <div class="card fade-in" style="animation-delay: 0.2s;">

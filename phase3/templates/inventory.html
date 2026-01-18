@@ -40,7 +40,7 @@
         <div class="stat-icon">
             <i data-lucide="alert-triangle"></i>
         </div>
-        <div class="stat-value">{{ products|selectattr('StockStatus', 'equalto', 'Low')|list|length }}</div>
+    <div class="stat-value">{{ stock_counts['Low'] }}</div>
         <div class="stat-label">Low Stock Alerts</div>
     </div>
 </div>
@@ -152,6 +152,9 @@
 <script>
     lucide.createIcons();
     
+    const stockCounts = {{ stock_counts|tojson }};
+    const categoryValues = {{ category_values|tojson }};
+    
     // Stock Distribution Chart
     const stockCtx = document.getElementById('stockChart').getContext('2d');
     new Chart(stockCtx, {
@@ -160,9 +163,9 @@
             labels: ['Good Stock', 'Medium Stock', 'Low Stock'],
             datasets: [{
                 data: [
-                    {{ products|selectattr('StockStatus', 'equalto', 'Good')|list|length }},
-                    {{ products|selectattr('StockStatus', 'equalto', 'Medium')|list|length }},
-                    {{ products|selectattr('StockStatus', 'equalto', 'Low')|list|length }}
+                    stockCounts.Good || 0,
+                    stockCounts.Medium || 0,
+                    stockCounts.Low || 0
                 ],
                 backgroundColor: [
                     'rgba(74, 222, 128, 0.8)',
@@ -197,21 +200,15 @@
     });
     
     // Value by Category Chart
-    const categories = {};
-    {% for product in products %}
-        const cat = '{{ product.CategoryName or "Other" }}';
-        const val = {{ product.SellingPrice * product.StockQuantity }};
-        categories[cat] = (categories[cat] || 0) + val;
-    {% endfor %}
     
     const valueCtx = document.getElementById('valueChart').getContext('2d');
     new Chart(valueCtx, {
         type: 'bar',
         data: {
-            labels: Object.keys(categories),
+            labels: Object.keys(categoryValues),
             datasets: [{
                 label: 'Inventory Value (₪)',
-                data: Object.values(categories),
+                data: Object.values(categoryValues),
                 backgroundColor: 'rgba(201, 169, 98, 0.6)',
                 borderColor: 'rgba(201, 169, 98, 1)',
                 borderWidth: 2,

@@ -6,7 +6,6 @@
 <div class="page-header fade-in">
     <div>
         <h1>Reports & Analytics</h1>
-        <p>Business insights and performance metrics</p>
     </div>
 </div>
 
@@ -127,15 +126,9 @@
                     <div class="employee-name">{{ emp.FirstName }} {{ emp.LastName }}</div>
                     <div class="employee-stats">
                         <span><i data-lucide="shopping-bag" style="width: 14px; height: 14px;"></i> {{ emp.OrderCount or 0 }} orders</span>
-                        <span><i data-lucide="banknote" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.TotalSales or 0) }} ₪</span>
                         <span><i data-lucide="truck" style="width: 14px; height: 14px;"></i> {{ emp.DeliveredOrders or 0 }} delivered</span>
-                        <span><i data-lucide="package-check" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.DeliveredValue or 0) }} ₪</span>
                         <span><i data-lucide="package" style="width: 14px; height: 14px;"></i> {{ emp.ReceivedPurchases or 0 }} received</span>
-                        <span><i data-lucide="clipboard-check" style="width: 14px; height: 14px;"></i> {{ "%.0f"|format(emp.TotalReceivedCost or 0) }} ₪</span>
                     </div>
-                </div>
-                <div class="employee-revenue">
-                    {{ "%.0f"|format(emp.TotalSales or 0) }} ₪
                 </div>
             </div>
             {% endfor %}
@@ -149,7 +142,7 @@
     </div>
     
     <!-- Monthly Sales Trend -->
-    <div class="card">
+    <div class="card small-chart-card">
         <div class="card-header">
             <h3 class="card-title">
                 <i data-lucide="trending-up" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
@@ -236,6 +229,283 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Recent Purchases + Recent Orders -->
+<div class="report-grid fade-in" style="animation-delay: 0.35s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="truck" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Recent Purchases
+            </h3>
+        </div>
+        <form method="GET" action="{{ url_for('reports') }}" style="padding: 0 1.5rem 1.5rem;">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="min-width: 220px;">
+                    <label class="form-label">Days</label>
+                    <input type="number" name="supplier_days" class="form-control" min="1" value="{{ reports.supplier_days or 30 }}">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="filter"></i>
+                        Apply
+                    </button>
+                    <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+                        <i data-lucide="x"></i>
+                        Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+        {% if reports.recent_suppliers %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Supplier</th>
+                        <th>Purchases</th>
+                        <th>Last Purchase</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in reports.recent_suppliers %}
+                    <tr>
+                        <td>{{ supplier.SupplierName }}</td>
+                        <td>{{ supplier.PurchaseCount }}</td>
+                        <td>{{ supplier.LastPurchaseDate.strftime('%b %d, %Y') if supplier.LastPurchaseDate else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="truck"></i>
+            <p>No suppliers found for this period</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="clock" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Recent Orders
+            </h3>
+        </div>
+        <form method="GET" action="{{ url_for('reports') }}" style="padding: 0 1.5rem 1.5rem;">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="min-width: 220px;">
+                    <label class="form-label">Days</label>
+                    <input type="number" name="recent_orders_days" class="form-control" min="1" value="{{ reports.recent_orders_days or 30 }}">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="filter"></i>
+                        Apply
+                    </button>
+                    <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+                        <i data-lucide="x"></i>
+                        Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+        {% if reports.recent_orders %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in reports.recent_orders %}
+                    <tr>
+                        <td style="font-weight: 600; color: var(--accent-gold);">#{{ order.OrderID }}</td>
+                        <td>{{ order.OrderDate.strftime('%b %d, %Y') if order.OrderDate else order.OrderDate }}</td>
+                        <td>{{ order.FirstName }} {{ order.LastName }}</td>
+                        <td>
+                            {% if order.Status == 'Completed' %}
+                                <span class="badge badge-success">{{ order.Status }}</span>
+                            {% elif order.Status == 'Pending' %}
+                                <span class="badge badge-warning">{{ order.Status }}</span>
+                            {% else %}
+                                <span class="badge badge-info">{{ order.Status }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(order.TotalAmount) }} ₪</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="clock"></i>
+            <p>No recent orders for this period</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="report-grid fade-in" style="animation-delay: 0.4s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="wallet" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Customers Over Amount
+            </h3>
+        </div>
+        <form method="GET" action="{{ url_for('reports') }}" style="padding: 0 1.5rem 1.5rem;">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="min-width: 220px;">
+                    <label class="form-label">Amount (₪)</label>
+                    <input type="number" name="min_spent" class="form-control" min="0" step="0.01" value="{{ reports.min_spent or 2000 }}">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="filter"></i>
+                        Apply
+                    </button>
+                    <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+                        <i data-lucide="x"></i>
+                        Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+        {% if reports.customers_over_amount %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Total Spent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in reports.customers_over_amount %}
+                    <tr>
+                        <td>{{ customer.FirstName }} {{ customer.LastName }}</td>
+                        <td>{{ customer.Email or '—' }}</td>
+                        <td>{{ customer.PhoneNumber or '—' }}</td>
+                        <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(customer.TotalSpent) }} ₪</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="wallet"></i>
+            <p>No customers exceed this amount</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="users" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Customer Order Counts
+            </h3>
+        </div>
+        {% if reports.customer_purchase_counts %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Orders</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in reports.customer_purchase_counts %}
+                    <tr>
+                        <td>{{ customer.FirstName }} {{ customer.LastName }}</td>
+                        <td>{{ customer.Email or '—' }}</td>
+                        <td>{{ customer.PhoneNumber or '—' }}</td>
+                        <td>{{ customer.PurchaseCount }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="users"></i>
+            <p>No customer data available</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card fade-in" style="animation-delay: 0.5s;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="calendar" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+            Products Sold Between Dates
+        </h3>
+    </div>
+    <form method="GET" action="{{ url_for('reports') }}" style="padding: 0 1.5rem 1.5rem;">
+        <div class="grid-2" style="align-items: end;">
+            <div class="form-group">
+                <label class="form-label">Start Date</label>
+                <input type="date" name="sales_start" class="form-control" value="{{ reports.sales_start or '' }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">End Date</label>
+                <input type="date" name="sales_end" class="form-control" value="{{ reports.sales_end or '' }}">
+            </div>
+        </div>
+        <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i>
+                Apply
+            </button>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+                <i data-lucide="x"></i>
+                Clear
+            </a>
+        </div>
+    </form>
+    {% if reports.products_sold_between %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Total Sold</th>
+                    <th>Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in reports.products_sold_between %}
+                <tr>
+                    <td>{{ product.ProductName }}</td>
+                    <td>{{ product.TotalSold }}</td>
+                    <td style="font-weight: 600; color: var(--accent-gold);">{{ "%.2f"|format(product.TotalRevenue) }} ₪</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="calendar"></i>
+        <p>No products sold for this date range</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -338,6 +608,32 @@
         font-size: 1.25rem;
         font-weight: 600;
         color: var(--text-primary);
+    }
+    
+    .small-chart-card {
+        height: 360px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .small-chart-card .chart-container {
+        flex: 1;
+        height: auto;
+        min-height: 0;
+    }
+    
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .report-grid .card {
+        min-width: 0;
+    }
+    
+    .report-grid .table-container {
+        overflow-x: auto;
     }
 </style>
 {% endblock %}

@@ -1174,6 +1174,8 @@ def products():
     cursor = conn.cursor(dictionary=True)
     search = request.args.get('search', '')
     category = request.args.get('category', '')
+    order_by = request.args.get('order_by', 'name')
+    orders_category = request.args.get('orders_category', '')
     
     try:
         query = """
@@ -1194,7 +1196,10 @@ def products():
             query += " AND p.CategoryName = %s"
             params.append(category)
         
-        query += " ORDER BY p.ProductName"
+        if order_by == 'category':
+            query += " ORDER BY p.CategoryName, p.ProductName"
+        else:
+            query += " ORDER BY p.ProductName"
         
         cursor.execute(query, params)
         products = cursor.fetchall()
@@ -1207,16 +1212,57 @@ def products():
         """)
         categories = cursor.fetchall()
         
+        orders_by_category = []
+        if orders_category:
+            cursor.execute("""
+                SELECT o.OrderID, o.OrderDate, o.Status,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
+                       c.FirstName, c.LastName
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                JOIN Order_Product op ON o.OrderID = op.OrderID
+                JOIN Products p ON op.ProductID = p.ProductID
+                WHERE p.CategoryName = %s
+                GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
+                ORDER BY o.OrderDate DESC
+            """, (orders_category,))
+            orders_by_category = cursor.fetchall()
+            for order in orders_by_category:
+                if order.get('TotalAmount') is None:
+                    order['TotalAmount'] = 0
+        
+        cursor.execute("""
+            SELECT *
+            FROM Products
+            ORDER BY SellingPrice DESC
+            LIMIT 1
+        """)
+        highest_priced_product = cursor.fetchone()
+        
+        cursor.execute("""
+            SELECT *
+            FROM Products
+            ORDER BY SellingPrice ASC
+            LIMIT 1
+        """)
+        lowest_priced_product = cursor.fetchone()
+        
     except Error as e:
         flash(f'Error fetching products: {e}', 'error')
         products = []
         categories = []
+        orders_by_category = []
+        highest_priced_product = None
+        lowest_priced_product = None
     finally:
         cursor.close()
         conn.close()
     
-    return render_template('products.html', products=products, categories=categories, 
-                         search=search, selected_category=category)
+    return render_template('products.html', products=products, categories=categories,
+                         search=search, selected_category=category, order_by=order_by,
+                         orders_category=orders_category, orders_by_category=orders_by_category,
+                         highest_priced_product=highest_priced_product,
+                         lowest_priced_product=lowest_priced_product)
 
 @app.route('/products/add', methods=['GET', 'POST'])
 @login_required
@@ -1681,6 +1727,8 @@ def inventory():
         return render_template('inventory.html', products=[])
     
     cursor = conn.cursor(dictionary=True)
+    stock_counts = {'Good': 0, 'Medium': 0, 'Low': 0}
+    category_values = {}
     
     try:
         cursor.execute("""
@@ -1696,6 +1744,14 @@ def inventory():
             ORDER BY p.StockQuantity ASC, p.ProductName
         """)
         products = cursor.fetchall()
+        for product in products:
+            stock_status = product.get('StockStatus')
+            if stock_status in stock_counts:
+                stock_counts[stock_status] += 1
+            category_name = product.get('CategoryName') or 'Other'
+            category_values[category_name] = category_values.get(category_name, 0) + (
+                (product.get('SellingPrice') or 0) * (product.get('StockQuantity') or 0)
+            )
         
         cursor.execute("""
             SELECT SUM(StockQuantity * SellingPrice) as total_value
@@ -1707,11 +1763,14 @@ def inventory():
         flash(f'Error fetching inventory: {e}', 'error')
         products = []
         total_value = 0
+        stock_counts = {'Good': 0, 'Medium': 0, 'Low': 0}
+        category_values = {}
     finally:
         cursor.close()
         conn.close()
     
-    return render_template('inventory.html', products=products, total_value=total_value)
+    return render_template('inventory.html', products=products, total_value=total_value,
+                         stock_counts=stock_counts, category_values=category_values)
 
 @app.route('/reports')
 @login_required
@@ -1724,6 +1783,44 @@ def reports():
     
     cursor = conn.cursor(dictionary=True)
     reports = {}
+    supplier_days = request.args.get('supplier_days', '30')
+    recent_orders_days = request.args.get('recent_orders_days', '30')
+    min_spent = request.args.get('min_spent', '2000')
+    sales_start = request.args.get('sales_start', '').strip()
+    sales_end = request.args.get('sales_end', '').strip()
+    
+    try:
+        supplier_days_val = int(supplier_days)
+        if supplier_days_val <= 0:
+            supplier_days_val = 30
+    except ValueError:
+        supplier_days_val = 30
+
+    try:
+        recent_orders_days_val = int(recent_orders_days)
+        if recent_orders_days_val <= 0:
+            recent_orders_days_val = 30
+    except ValueError:
+        recent_orders_days_val = 30
+    
+    try:
+        min_spent_val = float(min_spent)
+        if min_spent_val < 0:
+            min_spent_val = 0
+    except ValueError:
+        min_spent_val = 2000
+    
+    sales_range_valid = False
+    if sales_start and sales_end:
+        try:
+            start_date = datetime.strptime(sales_start, '%Y-%m-%d').date()
+            end_date = datetime.strptime(sales_end, '%Y-%m-%d').date()
+            if start_date > end_date:
+                flash('Start date must be before end date.', 'error')
+            else:
+                sales_range_valid = True
+        except ValueError:
+            flash('Dates must be in format YYYY-MM-DD.', 'error')
     
     try:
         cursor.execute("""
@@ -1785,7 +1882,6 @@ def reports():
                 WHERE ReceivedBy IS NOT NULL
                 GROUP BY ReceivedBy
             ) purch ON e.EmployeeID = purch.EmployeeID
-            ORDER BY TotalSales DESC
         """)
         employee_perf = cursor.fetchall()
         for emp in employee_perf:
@@ -1801,6 +1897,7 @@ def reports():
                 emp['ReceivedPurchases'] = 0
             if emp.get('TotalReceivedCost') is None:
                 emp['TotalReceivedCost'] = 0
+        employee_perf.sort(key=lambda emp: emp['OrderCount'] + emp['DeliveredOrders'])
         reports['employee_performance'] = employee_perf
         
         cursor.execute("""
@@ -1820,6 +1917,80 @@ def reports():
             if month.get('TotalSales') is None:
                 month['TotalSales'] = 0
         reports['monthly_sales'] = monthly_sales
+        
+        cursor.execute("""
+            SELECT o.OrderID, o.OrderDate, o.Status,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalAmount,
+                   c.FirstName, c.LastName
+            FROM Orders o
+            JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.OrderDate >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+            GROUP BY o.OrderID, o.OrderDate, o.Status, c.FirstName, c.LastName
+            ORDER BY o.OrderDate DESC
+        """, (recent_orders_days_val,))
+        recent_orders = cursor.fetchall()
+        for order in recent_orders:
+            if order.get('TotalAmount') is None:
+                order['TotalAmount'] = 0
+        reports['recent_orders'] = recent_orders
+        
+        cursor.execute("""
+            SELECT s.SupplierID, s.SupplierName,
+                   COUNT(DISTINCT p.PurchaseID) as PurchaseCount,
+                   MAX(p.PurchaseDate) as LastPurchaseDate
+            FROM Suppliers s
+            JOIN Purchases p ON s.SupplierID = p.SupplierID
+            WHERE p.PurchaseDate >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+            GROUP BY s.SupplierID, s.SupplierName
+            ORDER BY LastPurchaseDate DESC
+        """, (supplier_days_val,))
+        reports['recent_suppliers'] = cursor.fetchall()
+        
+        cursor.execute("""
+            SELECT c.CustomerID, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
+                   COUNT(DISTINCT o.OrderID) as PurchaseCount
+            FROM Customers c
+            LEFT JOIN Orders o ON c.CustomerID = o.CustomerID
+            GROUP BY c.CustomerID, c.FirstName, c.LastName, c.Email, c.PhoneNumber
+            ORDER BY PurchaseCount DESC
+        """)
+        reports['customer_purchase_counts'] = cursor.fetchall()
+        
+        cursor.execute("""
+            SELECT c.CustomerID, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalSpent
+            FROM Customers c
+            JOIN Orders o ON c.CustomerID = o.CustomerID
+            JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.Status = 'Completed'
+            GROUP BY c.CustomerID, c.FirstName, c.LastName, c.Email, c.PhoneNumber
+            HAVING SUM(op.Quantity * op.PricePerUnit) > %s
+            ORDER BY TotalSpent DESC
+        """, (min_spent_val,))
+        reports['customers_over_amount'] = cursor.fetchall()
+        
+        if sales_range_valid:
+            cursor.execute("""
+                SELECT p.ProductID, p.ProductName,
+                       SUM(op.Quantity) as TotalSold,
+                       SUM(op.Quantity * op.PricePerUnit) as TotalRevenue
+                FROM Orders o
+                JOIN Order_Product op ON o.OrderID = op.OrderID
+                JOIN Products p ON op.ProductID = p.ProductID
+                WHERE o.Status = 'Completed' AND o.OrderDate BETWEEN %s AND %s
+                GROUP BY p.ProductID, p.ProductName
+                ORDER BY TotalSold DESC
+            """, (sales_start, sales_end))
+            reports['products_sold_between'] = cursor.fetchall()
+        else:
+            reports['products_sold_between'] = []
+        
+        reports['supplier_days'] = supplier_days_val
+        reports['recent_orders_days'] = recent_orders_days_val
+        reports['min_spent'] = min_spent_val
+        reports['sales_start'] = sales_start
+        reports['sales_end'] = sales_end
         
     except Error as e:
         flash(f'Error generating reports: {e}', 'error')
@@ -1841,6 +2012,7 @@ def customers():
     
     cursor = conn.cursor(dictionary=True)
     search = request.args.get('search', '')
+    top_customer = None
     
     try:
         query = """
@@ -1850,22 +2022,36 @@ def customers():
         params = []
         
         if search:
-            query += " AND (FirstName LIKE %s OR LastName LIKE %s OR Email LIKE %s OR PhoneNumber LIKE %s)"
-            params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%'])
+            query += " AND (CustomerID LIKE %s OR FirstName LIKE %s OR LastName LIKE %s OR Email LIKE %s OR PhoneNumber LIKE %s OR Address LIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%'])
         
         query += " ORDER BY FirstName, LastName"
         
         cursor.execute(query, params)
         customers = cursor.fetchall()
         
+        cursor.execute("""
+            SELECT c.CustomerID, c.FirstName, c.LastName, c.Email, c.PhoneNumber,
+                   SUM(op.Quantity * op.PricePerUnit) as TotalSpent
+            FROM Customers c
+            JOIN Orders o ON c.CustomerID = o.CustomerID
+            JOIN Order_Product op ON o.OrderID = op.OrderID
+            WHERE o.Status = 'Completed'
+            GROUP BY c.CustomerID, c.FirstName, c.LastName, c.Email, c.PhoneNumber
+            ORDER BY TotalSpent DESC
+            LIMIT 1
+        """)
+        top_customer = cursor.fetchone()
+        
     except Error as e:
         flash(f'Error fetching customers: {e}', 'error')
         customers = []
+        top_customer = None
     finally:
         cursor.close()
         conn.close()
     
-    return render_template('customers.html', customers=customers, search=search)
+    return render_template('customers.html', customers=customers, search=search, top_customer=top_customer)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
 @login_required

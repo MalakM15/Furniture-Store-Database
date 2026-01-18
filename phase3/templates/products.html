@@ -22,7 +22,7 @@
                 <i data-lucide="search"></i>
                 <input type="text" name="search" placeholder="Search products..." value="{{ search }}" class="form-control" style="padding-left: 3rem;">
             </div>
-            <select name="category" class="form-control" style="width: auto; min-width: 200px;">
+            <select name="category" class="form-control" style="width: auto; min-width: 200px; height: 44px;">
                 <option value="">All Categories</option>
                 {% for cat in categories %}
                     <option value="{{ cat.CategoryName }}" {% if selected_category == cat.CategoryName %}selected{% endif %}>
@@ -30,12 +30,16 @@
                     </option>
                 {% endfor %}
             </select>
-            <button type="submit" class="btn btn-primary">
+            <label class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.5rem; height: 36px;">
+                <input type="checkbox" name="order_by" value="category" {% if order_by == 'category' %}checked{% endif %} style="transform: scale(0.9);">
+                <span>Order by Category</span>
+            </label>
+            <button type="submit" class="btn btn-primary" style="height: 44px;">
                 <i data-lucide="filter"></i>
                 Filter
             </button>
             {% if search or selected_category %}
-            <a href="{{ url_for('products') }}" class="btn btn-secondary">
+            <a href="{{ url_for('products') }}" class="btn btn-secondary" style="height: 44px;">
                 <i data-lucide="x"></i>
                 Clear
             </a>
@@ -58,6 +62,52 @@
                 <i data-lucide="list"></i>
             </button>
         </div>
+    </div>
+</div>
+
+<div class="grid-2 fade-in" style="animation-delay: 0.25s;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="arrow-up" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Highest-Priced Product
+            </h3>
+        </div>
+        {% if highest_priced_product %}
+        <div style="padding: 1.5rem;">
+            <div style="font-weight: 600;">{{ highest_priced_product.ProductName }}</div>
+            <div style="margin-top: 0.5rem; font-weight: 600; color: var(--accent-gold);">
+                {{ "%.2f"|format(highest_priced_product.SellingPrice) }} ₪
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="arrow-up"></i>
+            <p>No product data available</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i data-lucide="arrow-down" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-gold);"></i>
+                Lowest-Priced Product
+            </h3>
+        </div>
+        {% if lowest_priced_product %}
+        <div style="padding: 1.5rem;">
+            <div style="font-weight: 600;">{{ lowest_priced_product.ProductName }}</div>
+            <div style="margin-top: 0.5rem; font-weight: 600; color: var(--accent-gold);">
+                {{ "%.2f"|format(lowest_priced_product.SellingPrice) }} ₪
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="arrow-down"></i>
+            <p>No product data available</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -186,6 +236,7 @@
     </div>
 </div>
 {% endif %}
+
 {% endblock %}
 
 {% block extra_css %}
