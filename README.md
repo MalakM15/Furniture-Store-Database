@@ -2,8 +2,6 @@
 
 A comprehensive web-based database management system for AMIN Furniture Store in Ramallah, Palestine. This system handles customer orders, product inventory, supplier management, employee information, and business analytics.
 
-**Students:** Malak Milhem (1220031) & Layal Hajji (1220871)
-
 ---
 
 ## 📋 Features
@@ -17,7 +15,6 @@ A comprehensive web-based database management system for AMIN Furniture Store in
 - ✅ Product catalog with search and filtering
 - ✅ Shopping cart and checkout system
 - ✅ Order management with status tracking (Pending, Processing, Completed, Cancelled)
-- ✅ Payment processing (Cash, Card, Bank Transfer, E-payment)
 - ✅ Delivery tracking and management
 - ✅ Customer and employee profiles
 - ✅ Supplier management with product tracking
@@ -121,20 +118,13 @@ The database consists of **12 entities**:
 **Database normalization:** 3NF (Third Normal Form)
 
 ---
-
 ## 🔐 Default Login Credentials
 
-### Customer Account
-- **Email**: Any customer email from the database (e.g., `ahmad.salem@email.com`)
-- **Role**: Customer
-
-### Employee Account
-- **Email**: Any Employee email from the database (e.g.,`layla@aminfurniture.ps`)
-- **Role**: Employee
-
-### Manager Account
-- **Email**: Any Manager email from the database (e.g.,`khalil@aminfurniture.ps`)
-- **Role**: Manager
+| Role | Example Email | Access Level |
+| :--- | :--- | :--- |
+| **Customer** | `ahmad.salem@email.com` | Browse catalog, Manage Cart, Place/Cancel Orders |
+| **Employee** | `layla@aminfurniture.ps` | Update Order Status, Manage Products, Customer Info |
+| **Manager** | `khalil@aminfurniture.ps` | Full System Access, Sales Analytics, HR Management |
 
 ---
 
@@ -144,31 +134,9 @@ The database consists of **12 entities**:
 phase3/
 ├── 1220031_1220871.py          # Main Flask application
 ├── 1220031_1220871.sql          # Database schema and sample data
+├── templates/                   # HTML templates
 ├── requirements.txt              # Python dependencies
-├── README.md                    # This file
-└── templates/                   # HTML templates
-    ├── base.html                # Base layout template
-    ├── index.html               # Home page
-    ├── login.html               # Login page
-    ├── register.html            # Customer registration
-    ├── products.html            # Product listing
-    ├── orders.html              # Order management
-    ├── customers.html           # Customer management
-    ├── suppliers.html           # Supplier management
-    ├── employees.html           # Employee management (Manager)
-    ├── inventory.html           # Inventory management
-    ├── reports.html             # Business reports (Manager)
-    ├── customer/                # Customer-specific pages
-    │   ├── dashboard.html
-    │   ├── catalog.html
-    │   ├── cart.html
-    │   ├── checkout.html
-    │   ├── orders.html
-    │   ├── order_details.html
-    │   └── profile.html
-    └── employee/                # Employee/Manager pages
-        ├── dashboard.html
-        └── profile.html
+└── SETUP_INSTRUCTIONS.txt                   
 ```
 
 ---
@@ -211,32 +179,6 @@ phase3/
 
 ## 👨‍💻 Developers
 
-- **Malak Milhem**
-- **Layal Hajji** 
-
----
-
-## 📄 License
-
-This project is part of a Database Systems course assignment.
-
----
-
-## 🐛 Troubleshooting
-
-### Database Connection Error
-- Verify MySQL is running
-- Check database credentials in `DB_CONFIG`
-- Ensure `amin_furniture` database exists
-
-### Module Not Found Error
-- Run `pip install -r requirements.txt`
-- Verify Python version (3.7+)
-
-### Port Already in Use
-- Change the port in the last line of `1220031_1220871.py`:
-  ```python
-  app.run(host='0.0.0.0', port=5000, debug=True)
-  ```
+- **Malak Milhem** & **Layal Hajji** 
 
 ---
