@@ -34,7 +34,6 @@ SETUP INSTRUCTIONS:
 4. RUN THE APPLICATION:
    - In terminal, run: python 1220031_1220871.py
    - The application will start on http://localhost:5000
-   - Open your web browser and navigate to: http://localhost:5000
 
 5. FEATURES AVAILABLE:
    - Dashboard: Overview statistics and recent orders
@@ -42,14 +41,3 @@ SETUP INSTRUCTIONS:
    - Orders: View all orders, filter by status, view order details
    - Inventory: Check stock levels and inventory value
    - Reports: View business reports (top products, sales by category, etc.)
-
-6. FOR VIDEO DEMONSTRATION:
-   - Record a screen capture showing:
-     * Database connection and data loading
-     * Navigating through different sections
-     * Adding/updating a product
-     * Viewing order details
-     * Checking inventory
-     * Viewing reports
-
-
